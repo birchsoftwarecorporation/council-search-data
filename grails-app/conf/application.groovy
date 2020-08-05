@@ -11,9 +11,7 @@ grails.plugin.springsecurity.rest.token.storage.jwt.secret = 'fuckinsecretkeylkj
 grails.plugin.springsecurity.securityConfigType = "InterceptUrlMap"
 grails.plugin.springsecurity.interceptUrlMap = [
 		[pattern: '/error',          access: ['permitAll']],
-
-//		[pattern: '/api/alert',   access: ['ROLE_USER', 'ROLE_ADMIN']],
-//		[pattern: '/api/alert',   access: ['isFullyAuthenticated()']],
+		[pattern: '/api/alert',   access: ['ROLE_USER', 'ROLE_ADMIN']],
 		[pattern: '/oauth/**',   access: ['permitAll']],
 		[pattern: '/api/oauth/**',   access: ['permitAll']],
 		[pattern: '/api/login', 	 access: ['permitAll']],
@@ -23,8 +21,6 @@ grails.plugin.springsecurity.interceptUrlMap = [
 
 grails.plugin.springsecurity.filterChain.chainMap = [
 	[pattern: '/api/guest/**', filters: 'anonymousAuthenticationFilter,restTokenValidationFilter,restExceptionTranslationFilter,filterInvocationInterceptor'],
-//	[pattern: '/api/**', filters:'JOINED_FILTERS,-anonymousAuthenticationFilter,-exceptionTranslationFilter,-authenticationProcessingFilter,-securityContextPersistenceFilter,-rememberMeAuthenticationFilter'],
-	[pattern: '/api/**', filters:'JOINED_FILTERS,-exceptionTranslationFilter,-authenticationProcessingFilter,-securityContextPersistenceFilter,-rememberMeAuthenticationFilter'],
-	[pattern: '/oauth/**', filters:'anonymousAuthenticationFilter,restTokenValidationFilter,restExceptionTranslationFilter,filterInvocationInterceptor'],
+	[pattern: '/api/**', filters:'JOINED_FILTERS,-anonymousAuthenticationFilter,-exceptionTranslationFilter,-authenticationProcessingFilter,-securityContextPersistenceFilter,-rememberMeAuthenticationFilter'],
 	[pattern: '/**', filters: 'JOINED_FILTERS,-restTokenValidationFilter,-restExceptionTranslationFilter']
 ]
