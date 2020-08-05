@@ -15,20 +15,25 @@ class BootStrap {
 		User admin = User.findByEmail("admin@councilsearch.com")
 
 		if(!admin){
-			admin = new User(firstName: "The",
+			admin = new User(
+					username:"admin@councilsearch.com" ,
+					firstName: "The",
 					lastName: "Admin",
 					email: "admin@councilsearch.com",
 					password: "kireland")
-
+			admin.save(true)
 			// Add to org
 			org.addToEmployees(admin)
 			org.save()
+	//		UserRole.create(admin,adminRole,true)
 		}
 
 		User sean = User.findByEmail("sean@councilsearch.com")
 
 		if(!sean){
-			sean = new User(firstName: "Sean",
+			sean = new User(
+					username: "sean@councilsearch.com",
+					firstName: "Sean",
 					lastName: "Ogden",
 					email: "sean@councilsearch.com",
 					password: "kireland")
@@ -41,7 +46,9 @@ class BootStrap {
 		User justin = User.findByEmail("sean@councilsearch.com")
 
 		if(!justin){
-			justin = new User(firstName: "Justin",
+			justin = new User(
+					username: "justin@councilsearch.com",
+					firstName: "Justin",
 					lastName: "Ogden",
 					email: "justin@councilsearch.com",
 					password: "kireland")
