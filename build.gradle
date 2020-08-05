@@ -1,0 +1,128 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        maven { url "https://repo.grails.org/grails/core" }
+    }
+    dependencies {
+        classpath "org.grails:grails-gradle-plugin:$grailsVersion"
+        classpath "org.grails.plugins:hibernate5:${gormVersion-".RELEASE"}"
+        classpath "org.grails.plugins:views-gradle:1.2.9"
+    }
+}
+
+version "1.0"
+group "com.councilsearch"
+
+apply plugin:"war"
+apply plugin:"idea"
+apply plugin:"org.grails.grails-web"
+apply plugin:"org.grails.plugins.views-json"
+
+
+repositories {
+    mavenLocal()
+    maven { url "https://repo.grails.org/grails/core" }
+}
+
+dependencies {
+	// Spring Security
+	compile 'org.grails.plugins:spring-security-core:3.2.3'
+	compile "org.grails.plugins:spring-security-rest:2.0.0.RC1"
+	// Sitemap Generator
+	compile group: 'com.github.dfabulich', name: 'sitemapgen4j', version: '1.1.2'
+	// Google Search Console API
+	compile group: 'com.google.apis', name: 'google-api-services-webmasters', version: 'v3-rev39-1.25.0'
+	// Hash code
+	compile group: 'com.google.guava', name: 'guava', version: '28.2-jre'
+	// JSoup
+	compile group: 'org.jsoup', name: 'jsoup', version: '1.13.1'
+	// AWS
+	compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.718'
+	compile group: 'com.amazonaws', name: 'aws-java-sdk-ses', version: '1.11.747'
+	// PST Lib
+	compile group: 'com.pff', name: 'java-libpst', version: '0.9.3'
+	// Apache Tika
+	compile (group: 'org.apache.tika', name: 'tika-parsers', version: '1.24')
+	// Apache Solr
+	compile group: 'org.apache.solr', name: 'solr-solrj', version: '8.4.1'
+	// Apache HTTP Client
+	compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.11'
+	// Apache PDF Box
+	compile group: 'org.apache.pdfbox', name: 'pdfbox', version: '2.0.19'
+	compile group: 'org.apache.pdfbox', name: 'pdfbox-tools', version: '2.0.19'
+	// Jackson2
+	compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.10.3'
+	compile group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.10.3'
+	compile group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.10.3'
+	// MySQL
+	runtime 'mysql:mysql-connector-java:5.1.48'
+	// Grails
+    compile "org.springframework.boot:spring-boot-starter-logging"
+	compile ("org.springframework.boot:spring-boot-autoconfigure"){
+		exclude group: 'org.apache.solr', module: 'solr-solrj'
+	}
+    compile "org.grails:grails-core"
+    compile "org.springframework.boot:spring-boot-starter-actuator"
+    compile "org.springframework.boot:spring-boot-starter-tomcat"
+    compile "org.grails:grails-plugin-url-mappings"
+    compile "org.grails:grails-plugin-rest"
+    compile "org.grails:grails-plugin-codecs"
+    compile "org.grails:grails-plugin-interceptors"
+    compile "org.grails:grails-plugin-services"
+    compile "org.grails:grails-plugin-datasource"
+    compile "org.grails:grails-plugin-databinding"
+    compile "org.grails:grails-web-boot"
+    compile "org.grails:grails-logging"
+    compile "org.grails.plugins:cache"
+    compile "org.grails.plugins:async"
+    compile "org.grails.plugins:events"
+    compile "org.grails.plugins:hibernate5"
+    compile "org.hibernate:hibernate-core:5.1.16.Final"
+    compile "org.grails.plugins:views-json"
+    compile "org.grails.plugins:views-json-templates"
+    console "org.grails:grails-console"
+    profile "org.grails.profiles:rest-api"
+    runtime "org.glassfish.web:el-impl:2.1.2-b03"
+    runtime "com.h2database:h2"
+    runtime "org.apache.tomcat:tomcat-jdbc"
+    testCompile "org.grails:grails-gorm-testing-support"
+    testCompile "org.grails:grails-datastore-rest-client"
+    testCompile "org.grails:grails-web-testing-support"
+    testCompile "org.grails.plugins:geb:1.1.2"
+    testRuntime "org.seleniumhq.selenium:selenium-chrome-driver:2.47.1"
+    testRuntime "org.seleniumhq.selenium:selenium-htmlunit-driver:2.47.1"
+    testRuntime "net.sourceforge.htmlunit:htmlunit:2.18"
+}
+
+bootRun {
+	grails.pathingJar = true
+    jvmArgs('-Dspring.output.ansi.enabled=always')
+    addResources = true
+    String springProfilesActive = 'spring.profiles.active'
+    systemProperty springProfilesActive, System.getProperty(springProfilesActive)
+}
+
+war {
+	archiveName = "ROOT.war"
+}
+
+tasks.withType(Test) {
+    systemProperty "geb.env", System.getProperty('geb.env')
+    systemProperty "geb.build.reportsDir", reporting.file("geb/integrationTest")
+    systemProperty "webdriver.chrome.driver", System.getProperty('webdriver.chrome.driver')
+    systemProperty "webdriver.gecko.driver", System.getProperty('webdriver.gecko.driver')
+}
+
+// https://plugins.gradle.org/plugin/com.virgo47.ClasspathJar
+//buildscript {
+//	repositories {
+//		maven {
+//			url "https://plugins.gradle.org/m2/"
+//		}
+//	}
+//	dependencies {
+//		classpath "gradle.plugin.com.virgo47.gradle:ClasspathJar:1.0.0"
+//	}
+//}
+//
+//apply plugin: "com.virgo47.ClasspathJar"
