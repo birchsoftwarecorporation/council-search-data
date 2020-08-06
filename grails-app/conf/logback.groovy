@@ -9,5 +9,5 @@ appender("File-Appender", FileAppender) {
 	}
 }
 
-root(DEBUG, ["File-Appender"])
-logger("com.councilsearch", DEBUG, ["File-Appender"], false)
+root(ERROR, ["File-Appender"])
+logger("com.councilsearch", INFO, ["File-Appender"], false)

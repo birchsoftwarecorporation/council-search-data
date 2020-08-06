@@ -20,7 +20,7 @@ class UserController {
 			uMap.put("id", u.id)
 			uMap.put("firstName", u.firstName)
 			uMap.put("lastName", u.lastName)
-			uMap.put("email", u.email)
+			uMap.put("email", u.username)
 			users.add(uMap)
 		}
 

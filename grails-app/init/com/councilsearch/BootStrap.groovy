@@ -12,14 +12,13 @@ class BootStrap {
 		// Organization
 		def org = Organization.findOrCreateByName("Council Search")
 
-		User admin = User.findByEmail("admin@councilsearch.com")
+		User admin = User.findByUsername("admin@councilsearch.com")
 
 		if(!admin){
 			admin = new User(
-					username:"admin@councilsearch.com" ,
 					firstName: "The",
 					lastName: "Admin",
-					email: "admin@councilsearch.com",
+					username: "admin@councilsearch.com",
 					password: "kireland")
 			admin.save(true)
 			// Add to org
@@ -28,14 +27,13 @@ class BootStrap {
 	//		UserRole.create(admin,adminRole,true)
 		}
 
-		User sean = User.findByEmail("sean@councilsearch.com")
+		User sean = User.findByUsername("sean@councilsearch.com")
 
 		if(!sean){
 			sean = new User(
-					username: "sean@councilsearch.com",
 					firstName: "Sean",
 					lastName: "Ogden",
-					email: "sean@councilsearch.com",
+					username: "sean@councilsearch.com",
 					password: "kireland")
 
 			// Add to org
@@ -43,14 +41,13 @@ class BootStrap {
 			org.save()
 		}
 
-		User justin = User.findByEmail("sean@councilsearch.com")
+		User justin = User.findByUsername("sean@councilsearch.com")
 
 		if(!justin){
 			justin = new User(
-					username: "justin@councilsearch.com",
 					firstName: "Justin",
 					lastName: "Ogden",
-					email: "justin@councilsearch.com",
+					username: "justin@councilsearch.com",
 					password: "kireland")
 
 			// Add to org
