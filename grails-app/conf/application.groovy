@@ -14,11 +14,10 @@ grails.plugin.springsecurity.userLookup.authorityJoinClassName = 'com.councilsea
 grails.plugin.springsecurity.authority.className = 'com.councilsearch.Role'
 
 grails.plugin.springsecurity.controllerAnnotations.staticRules = [
-		[pattern: '/', access: ['ROLE_ADMIN']],
-		[pattern: '/oauth/**', access: ['permitAll']],
 		[pattern: '/api/guest/**', access: ['permitAll']],
-		[pattern: '/api/**', access: ['isFullyAuthenticated()']],
-		[pattern: '/**', access: ['isFullyAuthenticated()']],
+		[pattern: '/api/**', access: ['permitAll']],
+		[pattern: '/oauth/**', access: ['permitAll']],
+		[pattern: '/**', access: ['permitAll']],
 ]
 
 grails.plugin.springsecurity.filterChain.chainMap = [
