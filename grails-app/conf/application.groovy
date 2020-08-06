@@ -12,12 +12,16 @@ grails.plugin.springsecurity.providerNames=[ 'daoAuthenticationProvider','anonym
 grails.plugin.springsecurity.userLookup.userDomainClassName = 'com.councilsearch.User'
 grails.plugin.springsecurity.userLookup.authorityJoinClassName = 'com.councilsearch.UserRole'
 grails.plugin.springsecurity.authority.className = 'com.councilsearch.Role'
+grails.plugin.springsecurity.securityConfigType = 'InterceptUrlMap'
 
-grails.plugin.springsecurity.controllerAnnotations.staticRules = [
-		[pattern: '/api/guest/**', access: ['permitAll']],
-		[pattern: '/api/**', access: ['permitAll']],
-		[pattern: '/oauth/**', access: ['permitAll']],
-		[pattern: '/**', access: ['permitAll']],
+grails.plugin.springsecurity.interceptUrlMap = [
+		[pattern: '/api/guest/**',   access: ['permitAll']],
+		[pattern: '/api/login', 	 access: ['permitAll']],
+		[pattern: '/api/logout',     access: ['permitAll']],
+		[pattern: '/api/**',     access: ['ROLE_USER', 'ROLE_ADMIN']],
+		[pattern: '/error',          access: ['permitAll']],
+		[pattern: '/oauth/**',   access: ['permitAll']],
+		[pattern: '/**',             access: []]
 ]
 
 grails.plugin.springsecurity.filterChain.chainMap = [
