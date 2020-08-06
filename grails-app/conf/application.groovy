@@ -23,13 +23,14 @@ grails.plugin.springsecurity.authority.className = 'com.councilsearch.Role'
 //grails.plugin.springsecurity.rest.token.storage.memcached.expiration = 86400
 //grails.plugin.springsecurity.rest.token.storage.memcached.username = ''
 //grails.plugin.springsecurity.rest.token.storage.memcached.password = ''
-
-grails.plugin.springsecurity.controllerAnnotations.staticRules = [
-		[pattern: '/', access: ['ROLE_ADMIN']],
+grails.plugin.springsecurity.securityConfigType = "InterceptUrlMap"
+grails.plugin.springsecurity.interceptUrlMap  = [
 		[pattern: '/auth/**', access: ['permitAll']],
 		[pattern: '/oauth/**', access: ['permitAll']],
+		[pattern: '/api/guest/**', access: ['permitAll']],
 		[pattern: '/api/**', access: ['isFullyAuthenticated()']],
 		[pattern: '/**', access: ['isFullyAuthenticated()']],
+		[pattern: '/', access: ['ROLE_ADMIN']],
 ]
 
 grails.plugin.springsecurity.filterChain.chainMap = [
@@ -51,7 +52,8 @@ grails.plugin.springsecurity.filterChain.chainMap = [
 
 
 //
-//grails.plugin.springsecurity.interceptUrlMap = [
+//grails.plugin.springsecurity.interceptUrlMap = [-
+
 //		[pattern: '/error',          access: ['permitAll']],
 //
 ////		[pattern: '/api/alert',   access: ['ROLE_USER', 'ROLE_ADMIN']],
