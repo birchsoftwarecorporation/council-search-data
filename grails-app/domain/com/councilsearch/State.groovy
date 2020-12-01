@@ -23,13 +23,9 @@ class State {
 	static {
 		grails.converters.JSON.registerObjectMarshaller(State) { State state ->
 			return [
+					id: state.id,
 					name: state.name,
-					abbr: state.abbr,
-					population: state.population,
-					utc: state.utc,
-					fipsCode: state.fipsCode,
-					dateCreated: state.dateCreated,
-					lastModified: state.lastModified
+					abbr: state.abbr
 			]
 		}
 	}

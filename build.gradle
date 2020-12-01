@@ -13,11 +13,12 @@ buildscript {
 version "1.0"
 group "com.councilsearch"
 
-apply plugin:"war"
+apply plugin:"eclipse"
 apply plugin:"idea"
+apply plugin:"war"
 apply plugin:"org.grails.grails-web"
+apply plugin:"org.grails.grails-gsp"
 apply plugin:"org.grails.plugins.views-json"
-
 
 repositories {
     mavenLocal()
@@ -38,7 +39,7 @@ dependencies {
 	compile group: 'org.jsoup', name: 'jsoup', version: '1.13.1'
 	// AWS
 	compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.718'
-	compile group: 'com.amazonaws', name: 'aws-java-sdk-ses', version: '1.11.747'
+	compile group: 'com.amazonaws', name: 'aws-java-sdk-ses', version: '1.11.873'
 	// PST Lib
 	compile group: 'com.pff', name: 'java-libpst', version: '0.9.3'
 	// Apache Tika
@@ -56,7 +57,9 @@ dependencies {
 	compile group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.10.3'
 	// MySQL
 	runtime 'mysql:mysql-connector-java:5.1.48'
-	// Grails
+	// Non-REST default Page Renderer (is with web creation)
+	compile "org.grails.plugins:gsp" // https://stackoverflow.com/questions/40202523/render-a-template-as-string-in-a-service-in-grails-3-rest-api-profile-app
+	// Default Grails
     compile "org.springframework.boot:spring-boot-starter-logging"
 	compile ("org.springframework.boot:spring-boot-autoconfigure"){
 		exclude group: 'org.apache.solr', module: 'solr-solrj'

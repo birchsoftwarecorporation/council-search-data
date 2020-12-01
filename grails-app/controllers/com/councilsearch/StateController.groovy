@@ -4,7 +4,7 @@ import grails.converters.JSON
 
 class StateController {
 
-    def index() {
+    def list() {
 		render State.getAll() as JSON
 	}
 

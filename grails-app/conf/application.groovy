@@ -5,6 +5,7 @@ grails.plugin.springsecurity.logout.postOnly = false
 grails.plugin.springsecurity.rest.token.validation.useBearerToken = true
 grails.plugin.springsecurity.rest.login.useJsonCredentials=true
 grails.plugin.springsecurity.rest.token.validation.enableAnonymousAccess = true
+grails.plugin.springsecurity.rest.token.storage.jwt.expiration = 7200 // Seconds
 grails.plugin.springsecurity.rest.login.active=true
 grails.plugin.springsecurity.rest.login.failureStatusCode=401
 grails.plugin.springsecurity.rest.token.storage.jwt.secret='fuckinsecretkeylkjsadfsdfklsdjgibberish980923howtheprobabyhavetochange2309840932'
@@ -13,6 +14,7 @@ grails.plugin.springsecurity.userLookup.userDomainClassName = 'com.councilsearch
 grails.plugin.springsecurity.userLookup.authorityJoinClassName = 'com.councilsearch.UserRole'
 grails.plugin.springsecurity.authority.className = 'com.councilsearch.Role'
 grails.plugin.springsecurity.securityConfigType = 'InterceptUrlMap'
+
 
 grails.plugin.springsecurity.interceptUrlMap = [
 		[pattern: '/api/guest/**',   access: ['permitAll']],

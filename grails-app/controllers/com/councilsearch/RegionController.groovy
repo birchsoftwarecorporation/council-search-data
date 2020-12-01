@@ -1,13 +1,14 @@
 package com.councilsearch
 
+import com.sun.org.apache.regexp.internal.RE
 import grails.converters.JSON
 import groovy.json.JsonSlurper
 
 class RegionController {
 
-	def index() {
+	def list() {
 		def abbr = params.abbr
-		def type = params.type
+		List regions = []
 		def converter
 
 		if(!abbr){
@@ -24,23 +25,16 @@ class RegionController {
 			return
 		}
 
-		if("County".equalsIgnoreCase(type)){
-			converter = County.findAllByState(state) as JSON
-			// Exclude relationships properties
-			converter.setExcludes(County.class, ["state", "monitors"])
-		}else if("Place".equalsIgnoreCase(type)){
-			converter = Place.findAllByState(state) as JSON
-			// Exclude relationships properties
-			converter.setExcludes(County.class, ["state", "monitors"])
-		}else if("Agency".equalsIgnoreCase(type)){
-			converter = Agency.findAllByState(state) as JSON
-			// Exclude relationships properties
-			converter.setExcludes(Agency.class, ["state", "monitors"])
-		}else{
-			converter = Region.findAllByState(state) as JSON
-			// Exclude relationships properties
-			converter.setExcludes(Region.class, ["state", "monitors"])
-		}
+		regions += Agency.findAllByState(state)
+		regions += County.findAllByState(state)
+		regions += Place.findAllByState(state)
+
+		regions.sort{ it.name }
+
+		converter = regions as JSON
+
+		// Exclude relationships properties
+		converter.setExcludes(Region.class, ["state", "monitors"])
 
 		converter.render(response)
 	}

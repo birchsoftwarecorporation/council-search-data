@@ -5,6 +5,7 @@ import grails.gorm.transactions.Transactional
 @Transactional
 class AlertService {
 	def queryService
+	def extractTransferLoadService
 
     def create(def alertJson, User manager) {
 		if(alertJson.name == null || "".equals(alertJson.name)){
@@ -12,7 +13,8 @@ class AlertService {
 			return null
 		}
 
-		Alert alert = new Alert(name: alertJson.name, status: "Live", manager: manager)
+		Integer imgNum = Math.abs(new Random().nextInt() % 10) + 1
+		Alert alert = new Alert(name: alertJson.name, status: "live", manager: manager, image: imgNum.toString())
 
 		// Add phrases
 		if(alertJson.phrases == null || alertJson.phrases?.size() < 1){
@@ -43,7 +45,7 @@ class AlertService {
 
 		// Add the other members of this alert
 		alertJson.members?.unique()?.each{ mId ->
-			User member = User.findById(mId)
+			User member = User.get(mId)
 
 			// Only members of the same organization can share
 			if(member != null && manager.organization == member.organization){
@@ -59,6 +61,17 @@ class AlertService {
 		return alert
     }
 
+	// We dont delete we only hide it
+	def remove(def alertId){
+		Alert alert = Alert.get(alertId)
+
+		alert.status = "removed"
+
+		if(!alert.save()){
+			log.error("Could not mark Alert:${alertId} as removed "+alert.errors)
+		}
+	}
+
 	def getAllAlerts(User manager){
 		List alerts = []
 		List managerAlertIds = queryService.getAlertIdsByUser(manager.id)
@@ -67,42 +80,59 @@ class AlertService {
 		// Build the alert list - managed
 		managerAlertIds.each { alertRow ->
 			Alert alert = Alert.get(alertRow.get("alertId"))
-			Map alertMap = [:]
 
-			alertMap.put("id", alert.id)
-			alertMap.put("name", alert.name)
-			alertMap.put("isManager", true)
-			alertMap.put("status", alert.status)
-			alertMap.put("dateCreated", alert.dateCreated)
-			alertMap.put("lastUpdated", alert.lastUpdated)
-			alertMap.put("manager", alert.manager.firstName+" "+alert.manager.lastName)
-			alertMap.put("numMembers", alert.members?.size())
-			alertMap.put("numRegions", alert.regions?.size())
-			alertMap.put("numPhrases", alert.phrases?.size())
+			// Skip the ones marked as removed
+			if(!"removed".equalsIgnoreCase(alert.status)){
+				Map alertMap = [:]
 
-			alerts.add(alertMap)
+				alertMap.put("id", alert.id)
+				alertMap.put("name", alert.name)
+				alertMap.put("isManager", true)
+				alertMap.put("status", alert.status)
+				alertMap.put("dateCreated", alert.dateCreated)
+				alertMap.put("lastUpdated", alert.lastUpdated)
+				alertMap.put("manager", alert.manager.firstName+" "+alert.manager.lastName)
+				alertMap.put("numMembers", alert.members?.size())
+				alertMap.put("numRegions", alert.regions?.size())
+				alertMap.put("numPhrases", alert.phrases?.size())
+				alertMap.put("image", alert.image)
+
+				alerts.add(alertMap)
+			}
 		}
 
 		// Build the alert list - member
 		// TODO - little redundant but whatever fix it later
 		collabAlertIds.each { alertRow ->
 			Alert alert = Alert.get(alertRow.get("alertId"))
-			Map alertMap = [:]
 
-			alertMap.put("id", alert.id)
-			alertMap.put("name", alert.name)
-			alertMap.put("isManager", false)
-			alertMap.put("status", alert.status)
-			alertMap.put("dateCreated", alert.dateCreated)
-			alertMap.put("lastUpdated", alert.lastUpdated)
-			alertMap.put("manager", alert.manager.firstName+" "+alert.manager.lastName)
-			alertMap.put("numMembers", alert.members?.size())
-			alertMap.put("numRegions", alert.regions?.size())
-			alertMap.put("numPhrases", alert.phrases?.size())
+			// Skip the ones marked as removed
+			if(!"removed".equalsIgnoreCase(alert.status)) {
+				Map alertMap = [:]
 
-			alerts.add(alertMap)
+				alertMap.put("id", alert.id)
+				alertMap.put("name", alert.name)
+				alertMap.put("isManager", false)
+				alertMap.put("status", alert.status)
+				alertMap.put("dateCreated", alert.dateCreated)
+				alertMap.put("lastUpdated", alert.lastUpdated)
+				alertMap.put("manager", alert.manager.firstName + " " + alert.manager.lastName)
+				alertMap.put("numMembers", alert.members?.size())
+				alertMap.put("numRegions", alert.regions?.size())
+				alertMap.put("numPhrases", alert.phrases?.size())
+				alertMap.put("image", alert.image)
+
+				alerts.add(alertMap)
+			}
 		}
 
 		return alerts
+	}
+
+	def process(def alertId){
+		// Process the alert
+		extractTransferLoadService.processAlerts(alertId)
+		// Create the new events
+		extractTransferLoadService.createEvents(alertId)
 	}
 }

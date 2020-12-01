@@ -4,13 +4,10 @@ package com.councilsearch
 import grails.rest.*
 import grails.converters.*
 
-class LeadController {
+class MessageController {
 	static responseFormats = ['json']
 
-	def index(){
-		List leads = Lead.getAll()
-		render leads as JSON
-	}
+	def messageService
 
 	def save(){
 		def leadJSON = request.JSON
@@ -21,13 +18,16 @@ class LeadController {
 
 			if(!lead.save()){
 				response.status = 500
-				println "Unable to save lead! Errors: " + lead.errors
+				log.error "Unable to save lead! Errors: " + lead.errors
 				render ([error: "Unable to save lead: "+ lead.errors] as JSON)
 			}
+
+			// Notify us of the inquiry
+			messageService.contact(lead)
 		}catch(Exception e){
 			response.status = 500
-			println "Unable to save lead! Errors: " + lead.errors
-			render ([error: "Unable to save lead!" + lead.errors] as JSON)
+			log.error "Unable to save lead! Errors: " + lead.errors
+			render ([error: "Unable to save lead!"] as JSON)
 		}
 
 		render lead as JSON

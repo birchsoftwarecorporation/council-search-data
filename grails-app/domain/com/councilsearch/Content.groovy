@@ -3,7 +3,7 @@ package com.councilsearch
 class Content {
 	String text
 	Date dateCreated
-	Date lastModified
+	Date lastModified // TODO - Migrate to lastUpdated
 
 	static belongsTo =  [document: Document]
 

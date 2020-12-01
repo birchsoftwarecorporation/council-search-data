@@ -17,4 +17,18 @@ class Lead {
 		type(nullable: true, blank: true)
 		message(nullable: true, blank: true)
     }
+
+	String toString(){
+		def message = "Name: ${this.name}<br>\n"
+		message += "Sent: ${this.dateCreated}<br>\n"
+		message += "Company: ${this.company}<br>\n"
+		message += "Email: ${this.email}<br>\n"
+		message += "Phone: ${this.phone}<br>\n"
+		message += "Type: ${this.type}<br>\n"
+		message += "Message: ${this.message}<br>\n"
+
+		return message
+	}
+
+
 }

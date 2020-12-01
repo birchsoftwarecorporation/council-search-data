@@ -14,6 +14,7 @@ class Request {
 	List<String> documentType
 	List<String> regionType
 	List<String> region
+	List<String> regionIds
 
 	// Date filter
 	String startDateStr
@@ -30,7 +31,7 @@ class Request {
 	List searchFields = ["content"]
 	List highlightFields = ["content"]
 	Integer snippetNumber = 1
-	Integer highlightSize = 2000
+	Integer highlightSize = 1000
 	Integer maxAnalyzedChars = -1
 	String highlightWrapStart = "<span class=\"highlight\">"
 	String highlightWrapStop = "</span>"
@@ -40,6 +41,14 @@ class Request {
 	List multiFacetFields = ["document_type", "region_type", "region"]
 
 	Request(){ }
+
+	Request(String phrase, List regionIds){
+		this.q = phrase
+		this.regionIds = regionIds
+		this.rows = 100
+		this.startDate = new Date() - 30
+		this.endDate = new Date() + 45
+	}
 
 	void setStartDateStr(String dateStr){
 		if(dateStr != null && !"".equalsIgnoreCase(dateStr)){
@@ -68,6 +77,11 @@ class Request {
 		return date
 	}
 
+	String createSolrDateFilter(){
+		return "meeting_date:[${this.startDate.format("yyyy-MM-dd'T'HH:mm:ss'Z'")} TO ${this.endDate.format("yyyy-MM-dd'T'HH:mm:ss'Z'")}]"
+	}
+
+	// Search results for the UI
 	SolrQuery createSolrQuery(){
 		SolrQuery query = new SolrQuery()
 
@@ -136,7 +150,36 @@ class Request {
 		return query
 	}
 
-	String createSolrDateFilter(){
-		return "meeting_date:[${this.startDate.format("yyyy-MM-dd'T'HH:mm:ss'Z'")} TO ${this.endDate.format("yyyy-MM-dd'T'HH:mm:ss'Z'")}]"
+	// For the nightly matching
+	SolrQuery createSolrQueryMin(){
+		SolrQuery query = new SolrQuery()
+
+		// Set the query
+		query.setQuery("\"${this.q.replaceAll("\"","")}\"") // must match
+		// Set the row max
+		.setRows(this.rows)
+		// Set the return fields
+		.setFields("id,content")
+		// Set the default search text field
+		.setParam("df", "content")
+		// Set Highlighting
+		.setHighlight(this.toHighlight ?: true)
+		.setHighlightSnippets(10)
+		.setParam("hl.fl", this.highlightFields?.join(",") ?: "content")
+		.setParam("hl.maxAnalyzedChars", "-1")
+		.setParam("hl.mergeContiguous", "true")
+		.setParam("hl.fragsize", this.highlightSize as String ?: "500")
+		.setParam("hl.simple.pre", this.highlightWrapStart ?: "<b>")
+		.setParam("hl.simple.post", this.highlightWrapStop ?: "</b>")
+		
+		// Set the fq region ids
+		if(regionIds?.size() > 0){
+			query.addFilterQuery("{!tag=region_id}region_id:(${regionIds?.join(" ")})")
+		}
+
+		// Set the date
+		query.addFilterQuery(createSolrDateFilter())
+
+		return query
 	}
 }

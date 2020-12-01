@@ -3,7 +3,7 @@ package com.councilsearch
 import grails.testing.web.controllers.ControllerUnitTest
 import spock.lang.Specification
 
-class LeadControllerSpec extends Specification implements ControllerUnitTest<LeadController> {
+class MessageControllerSpec extends Specification implements ControllerUnitTest<MessageController> {
 
     def setup() {
     }

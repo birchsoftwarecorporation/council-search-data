@@ -10,9 +10,8 @@ class AlertController {
 	def springSecurityService
 	def alertService
 
-    def index() {
-//		def user = springSecurityService.getCurrentUser()
-		def user = User.get(2)
+    def list() {
+		def user = springSecurityService.getCurrentUser()
 		List alerts = alertService.getAllAlerts(user)
 
 		render alerts as JSON
@@ -20,8 +19,7 @@ class AlertController {
 
 
 	def show(){
-//		def user = springSecurityService.getCurrentUser()
-		def user = User.get(2)
+		def user = springSecurityService.getCurrentUser()
 		boolean isAdmin = user.authorities.any { it.authority == "ROLE_ADMIN" }
 		def alertId = params.id
 
@@ -93,8 +91,24 @@ class AlertController {
 			return
 		}
 
-		alert.delete(flush: true)
+		alertService.remove(alertId)
+
 
 		render ([status: "Removed Alert:${alertId}"] as JSON)
 	}
+
+	def process(){
+		def alertId = params.id
+
+		if (!Alert.exists(alertId)) {
+			response.status = 400
+			render ([error: "Alert:${alertId} does not exist"] as JSON)
+			return
+		}
+
+		alertService.process(alertId)
+
+		render ([status: "Processed Alert:${alertId}"] as JSON)
+	}
+
 }

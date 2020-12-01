@@ -3,6 +3,7 @@ package com.councilsearch
 import com.councilsearch.search.Request
 import com.councilsearch.search.Response
 import grails.converters.JSON
+import org.apache.solr.client.solrj.response.QueryResponse
 import org.apache.solr.client.solrj.response.UpdateResponse
 
 class SearchController {
@@ -17,12 +18,13 @@ class SearchController {
 		log.info("Requesting Search results for JSON: ${sReqJson}")
 
 		// Record the activity
-		Activity activity = new Activity(name: "search", details: sReqJson.toString(), ipAddress: request.getRemoteAddr())
-		activity.save()
+//		Activity activity = new Activity(name: "search", details: sReqJson.toString(), ipAddress: request.getRemoteAddr())
+//		activity.save()
 
 		try{
 			searchRequest = new Request(sReqJson)
-			searchResult = searchService.request(searchRequest)
+			QueryResponse queryResponse = searchService.request(searchRequest.createSolrQuery())
+			searchResult = new Response(queryResponse)
 		}catch(Exception e){
 			log.error("Could not process search request: "+ e)
 			response.status = 400

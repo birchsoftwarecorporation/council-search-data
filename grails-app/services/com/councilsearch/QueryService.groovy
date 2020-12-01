@@ -164,6 +164,7 @@ class QueryService {
 	}
 
 	def getMaxDocumentId() {
+		log.info("Query for max document id")
 		def id
 		Sql sql = new Sql(dataSource)
 		String query = """
@@ -183,13 +184,13 @@ class QueryService {
 		}
 
 		return id
-
 	}
 
 	def getAllSearchDocuments(def offset, def maxRows) {
 		log.info("Getting searchable data from database offset:${offset} maxRows:${maxRows}")
 		Sql sql = new Sql(dataSource)
 		List documents = []
+
 		String query = """
 			SELECT
 				# Document
@@ -199,7 +200,6 @@ class QueryService {
 				d.meeting_date meetingDate,
 				d.date_created dateCreated,
 				d.uuid uuid,
-				c.text text,
 				# Monitor
 				m.id monitorId,
 				# Region
@@ -211,10 +211,10 @@ class QueryService {
 				s.abbr stateAbbr
 			FROM
 				document d
-				left join content c on d.id = c.document_id
-				left join monitor m on m.id = d.monitor_id
-				left join region r on r.id = m.region_id
-				left join state s on s.id = r.state_id
+					left join monitor m on m.id = d.monitor_id
+					left join region r on r.id = m.region_id
+					left join state s on s.id = r.state_id
+			WHERE d.success = true
 		"""
 
 		try {
@@ -227,6 +227,31 @@ class QueryService {
 
 		return documents
 	}
+
+	def getContentByDocId(def docId) {
+		log.debug("Query for content with document id:${docId}")
+		def text
+		Sql sql = new Sql(dataSource)
+		String query = """
+			SELECT 
+				text
+			FROM
+				content
+			WHERE
+				document_id = :docId
+		"""
+
+		try {
+			text = sql.rows(query, [docId: docId])?.get(0)?.get("text") ?: ""
+		} catch (Exception e) {
+			log.error("Could not query for Search Documents: " + e)
+		} finally {
+			sql.close()
+		}
+
+		return text
+	}
+
 
 	def getDocumentURLsByMonitorId(def monitorId){
 		log.info("Getting urls for Monitor:${monitorId}")
@@ -347,5 +372,179 @@ class QueryService {
 		}
 
 		return alertIds
+	}
+
+	def getAlertIdByStatus(def status){
+		log.info("Getting Alerts by status ${status}")
+		Sql sql = new Sql(dataSource)
+		List alertIds = []
+		String query = """
+			SELECT 
+				id alertId
+			FROM
+				alert
+			WHERE
+				status = :status
+		"""
+
+		try {
+			alertIds = sql.rows(query, [status: status])
+		} catch (Exception e) {
+			log.error("Could not query for Alert Ids by status: " + e)
+		} finally {
+			sql.close()
+		}
+
+		return alertIds
+	}
+
+	def getAlertRegionsByAlertId(def alertId){
+		log.info("Getting Alert Regions by alert id ${alertId}")
+		Sql sql = new Sql(dataSource)
+		List regionIds = []
+		String query = """
+			SELECT 
+				region_id regionId
+			FROM
+				alert_region
+			WHERE
+				alert_regions_id = :alertId
+		"""
+
+		try {
+			regionIds = sql.rows(query, [alertId: alertId])
+		} catch (Exception e) {
+			log.error("Could not query for Alert Region Ids by alertId: " + e)
+		} finally {
+			sql.close()
+		}
+
+		return regionIds
+	}
+
+	def getAlertPhrasesByAlertId(def alertId){
+		log.info("Getting Alert Phrases by alert id ${alertId}")
+		Sql sql = new Sql(dataSource)
+		List phrases = []
+		String query = """
+			SELECT 
+				p.name phrase
+			FROM
+				alert_phrase ap
+				LEFT JOIN phrase p on ap.phrase_id = p.id
+			WHERE
+				ap.alert_phrases_id = :alertId
+		"""
+
+		try {
+			phrases = sql.rows(query, [alertId: alertId])
+		} catch (Exception e) {
+			log.error("Could not query for Alert Phrase Ids by alertId: " + e)
+		} finally {
+			sql.close()
+		}
+
+		return phrases
+	}
+
+	/* Grab user owned and member events */
+	def getEventsByUser(def userId){
+		log.info("Getting all Events associated with User:${userId}")
+		Sql sql = new Sql(dataSource)
+		List events = []
+		String query = """
+			SELECT 
+				e.id eventId
+			FROM
+				event e
+			WHERE
+				e.owner_id = :userId
+		"""
+		String query2 = """
+			SELECT 
+				e.id eventId
+			FROM
+				event e
+					LEFT JOIN
+				event_user eu ON eu.event_members_id = e.id
+			WHERE
+				eu.user_id = :userId
+		"""
+
+		try {
+			// Grab the events the user owns
+			sql.rows(query, [userId: userId]).each {
+				events.push(it.get("eventId"))
+			}
+			// Grab the events the user is a member of
+			sql.rows(query2, [userId: userId]).each {
+				events.push(it.get("eventId"))
+			}
+		} catch (Exception e) {
+			log.error("Could not query for Events by User:${userId}" + e)
+		} finally {
+			sql.close()
+		}
+
+		return events
+	}
+
+	def getAssocActiveAlertsByUser(def userId, def status){
+		log.info("Getting all assoc alerts for user:${userId}")
+		Sql sql = new Sql(dataSource)
+		List alerts = []
+		String query = """
+			SELECT DISTINCT
+				a.id alertId
+			FROM
+				alert a
+					LEFT JOIN
+				alert_user au ON au.alert_members_id = a.id
+			WHERE
+				(a.manager_id = :userId OR au.user_id = :userId) and a.status = :status
+			ORDER BY a.name
+		"""
+
+		try {
+			// Grab the events the user owns
+			sql.rows(query, [userId: userId, status: status]).each {
+				alerts.push(it.get("alertId"))
+			}
+		} catch (Exception e) {
+			log.error("Could not query for Events by User:${userId}" + e)
+		} finally {
+			sql.close()
+		}
+
+		return alerts
+	}
+
+	def getUnemailedEventsByAlert(def alertId){
+		log.info("Getting all unemailed events for Alert:${alertId}")
+		Sql sql = new Sql(dataSource)
+		List events = []
+		String query = """
+			SELECT DISTINCT
+				e.id eventId
+			FROM
+				event e
+					LEFT JOIN
+				`match` m ON m.id = e.match_id
+			WHERE
+				e.emailed is null and m.alert_id = :alertId
+		"""
+
+		try {
+			// Grab the events the user owns
+			sql.rows(query, [alertId: alertId]).each {
+				events.push(it.get("eventId"))
+			}
+		} catch (Exception e) {
+			log.error("Could not query for Events by Alert:${alertId}" + e)
+		} finally {
+			sql.close()
+		}
+
+		return events
 	}
 }

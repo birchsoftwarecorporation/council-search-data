@@ -9,10 +9,6 @@ class DocumentController {
 		def uuid = params.uuid
 		log.info("Viewing Document:${uuid}")
 
-		// Record the activity
-		Activity activity = new Activity(name: "document-view", details: uuid, ipAddress: request.getRemoteAddr())
-		activity.save()
-
 		if(!uuid){
 			response.status = 400
 			log.error("No UUID specified")
@@ -62,9 +58,6 @@ class DocumentController {
 		def uuid = params.uuid
 		def s3inputStream
 		log.info("Downloading document with UUID:${uuid}")
-
-		Activity activity = new Activity(name: "document-download", details: uuid, ipAddress: request.getRemoteAddr())
-		activity.save()
 
 		if(!uuid){
 			response.status = 400

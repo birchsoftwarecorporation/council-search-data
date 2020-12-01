@@ -27,7 +27,7 @@ spring:
 # Spring Actuator Endpoints are Disabled by Default
 # https://guides.grails.org/grails-elasticbeanstalk/guide/index.html
 endpoints:
-    enabled: true
+    enabled: false
     jmx:
         enabled: true
 

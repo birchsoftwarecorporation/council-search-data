@@ -1,9 +1,11 @@
 package com.councilsearch
 
 import com.councilsearch.importio.ImportioResponse
+import com.councilsearch.search.Request
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.ObjectMapper
+import grails.gsp.PageRenderer
 import org.apache.http.HttpEntity
 import org.apache.http.HttpResponse
 import org.apache.http.HttpStatus
@@ -14,6 +16,9 @@ import org.apache.pdfbox.tools.TextToPDF
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission
 import org.apache.pdfbox.text.PDFTextStripper
+import org.apache.solr.client.solrj.response.QueryResponse
+import org.apache.solr.common.SolrDocument
+import org.apache.solr.common.SolrDocumentList
 import org.apache.tika.metadata.Metadata
 import org.apache.tika.parser.AutoDetectParser
 import org.apache.tika.sax.BodyContentHandler
@@ -25,10 +30,15 @@ import java.text.SimpleDateFormat
 import java.util.regex.Matcher
 
 class ExtractTransferLoadService implements InitializingBean {
+
 	def queryService
 	def requestService
 	def searchService
+	def eventService
+	def messageService
 	def amazonWebService
+
+	PageRenderer groovyPageRenderer
 
 	String PDF_OVERLAY_LOCATION
 	String IMPORTIO_BASE_URL
@@ -37,6 +47,13 @@ class ExtractTransferLoadService implements InitializingBean {
 	String TEMP_DIR
 	Integer ETL_REGION_THREAD
 	Integer ETL_DOCUMENT_BATCH_SIZE
+
+	String EMAIL_BASE_URL
+	Boolean EMAIL_ENABLED
+	Boolean EMAIL_OVERRIDE
+	String OVERRIDE_ADDRESS
+	String FROM_ADDRESS
+	String BCC_ADDRESS
 
 	// TODO - Separate this to its own microservice
 
@@ -603,7 +620,7 @@ class ExtractTransferLoadService implements InitializingBean {
 	}
 
 	String HTMLTagRemover(String text){
-		return text?.replaceAll("\\<.*?\\>", "");
+		return text?.replaceAll("\\<.*?\\>", " ");
 	}
 
 	def extractDate(List<Map> payloads){
@@ -841,4 +858,282 @@ class ExtractTransferLoadService implements InitializingBean {
 
 		return text.trim()
 	}
+
+	////////////////////////////////////////////////////
+	// Process alert
+	////////////////////////////////////////////////////
+
+	// TODO - scale
+	def processAlerts(def alertId){
+		List alerts = []
+
+		log.info("Processing Alerts...")
+
+		// If we have an alert id process just that one if not process all live alerts
+		if(alertId != null){
+			Alert alert = Alert.get(alertId)
+			alerts.add(alert)
+		}else{
+			alerts = Alert.findAllByStatus("live")
+		}
+
+		Iterator alertsItr = alerts.iterator()
+
+		while(alertsItr.hasNext()){
+			Alert alert = alertsItr.next()
+			List regionIds = queryService.getAlertRegionsByAlertId(alert.id).collect{it.regionId}
+			List phrases = queryService.getAlertPhrasesByAlertId(alert.id).collect{it.phrase}
+
+			// Only do a group of regions at a time because of solr
+			regionIds.collate(20).each{ subSetRIds ->
+				phrases.each{ phrase ->
+					log.info("processing Phrase: ${phrase} for geos: ${subSetRIds}")
+
+					if(!"".equals(phrase)){
+						// Create request
+						Request searchRequest = new Request(phrase, subSetRIds)
+						QueryResponse queryResponse = searchService.request(searchRequest.createSolrQueryMin())
+
+						// Going to parse this and not use the Repsonse obj
+						if(queryResponse != null){
+							SolrDocumentList solrDocList = queryResponse.getResults()
+							Map hlMap = queryResponse.getHighlighting()
+
+							// Iterate through the results
+							for(SolrDocument sDoc : solrDocList){
+								String id = sDoc.getFieldValue("id")
+								// TODO - probably swap this for payload
+								Document doc = Document.get(id)
+
+								if(doc){
+									Match match = Match.findByAlertAndDocument(alert, doc)
+
+									// Match does not exist
+									if(!match){
+										match = new Match(document: doc, eventCreated: false)
+
+										// Get the previews
+										hlMap.get(id)?.get("content").each{ hl ->
+											Preview preview = new Preview(phraseHit: phrase, text: hl)
+											match.addToPreviews(preview)
+										}
+
+										// Creat the match
+										alert.addToMatches(match)
+
+										if(!alert.save(flush: true)){
+											log.error("Could not update Alert:${alert.id} with matches"+ alert.errors)
+										}
+									// Match exists
+									}else{
+										// Does the match contain the phrase already
+										if(!match.previews?.collect{it.phraseHit?.toLowerCase()}.contains(phrase.toLowerCase())){
+											// Get the previews
+											hlMap.get(id)?.get("content").each{ hl ->
+												log.info("the preview"+hl)
+												Preview preview = new Preview(phraseHit: phrase, text: hl)
+												match.addToPreviews(preview)
+											}
+
+											// Creat the match
+											alert.addToMatches(match)
+
+											if(!alert.save(flush: true)){
+												log.error("Could not update Alert:${alert.id} with matches"+ alert.errors)
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+
+				}
+			}
+		}
+
+		log.info("Finished Processing Alerts")
+	}
+
+	// TODO - scale
+	def createEvents(def alertId){
+		log.info("Creating events...")
+		List matches = []
+
+		// Create events for all alerts or a single alert
+		if(alertId != null){
+			Alert alert = Alert.get(alertId)
+			matches = Match.findAllByAlertAndEventCreated(alert, false)
+		}else{
+			matches = Match.findAllByEventCreated(false)
+		}
+
+
+		log.info("Found ${matches.size()} matches to create events")
+
+		Iterator matchesItr = matches.iterator()
+
+		while(matchesItr.hasNext()) {
+			Match match = matchesItr.next()
+			UUID uuid = UUID.randomUUID()
+			Event event = new Event(match: match,
+									owner: match.alert.manager,
+									dueDate: match.document.meetingDate,
+									status: "open",
+									description: "",
+									uuid: uuid,
+									isRemoved: false)
+
+			log.info("Creating event members")
+
+			// Assoc the alerts users to this event
+			match.alert.members?.each{ member ->
+				event.addToMembers(member)
+			}
+
+			if(!event.save(flush: true)){
+				log.error("Could not create Event for Match:${match.id} "+ event.errors)
+			}else{
+				log.info("Create Event:${event.id} for Match:${match.id}")
+
+				// Update the match
+				match.eventCreated = true
+
+				if(!match.save(flush: true)){
+					log.error("Could not update EventCreated status for Match:${match.id} "+ match.errors)
+				}
+			}
+		}
+
+		log.info("Finished Creating events")
+	}
+
+	def notifications(){
+		if(EMAIL_ENABLED) {
+			// Build notification data
+			List<Map> messages = buildMessageData()
+			// Send notifications
+			messageService.sendNotifications(messages)
+			// Mark events as sent
+			markAsSent(messages)
+		}
+	}
+
+	def buildMessageData(){
+		List<Map> messages = []
+		DateFormat formatter = new SimpleDateFormat("MMMM dd, yyyy", Locale.US)
+		Date today = new Date()
+
+		// Start with active users
+		User.findAllByEnabledAndEmailActive(true, true).each{ user ->
+			List alerts = []
+
+			// Get all active users alerts
+			queryService.getAssocActiveAlertsByUser(user.id, "live").each{ alertId ->
+				Alert alert = Alert.get(alertId)
+				List events = []
+
+				// Get the events for this active alert
+				queryService.getUnemailedEventsByAlert(alertId).each{ eventId ->
+					Map eventMap = [:]
+					Event event = Event.get(eventId)
+
+					// Id
+					eventMap.put("id", event.id)
+					// Title
+					eventMap.put("title", event.match.document.title?.capitalize() ?: "No title")
+					// Geo
+					eventMap.put("geography", event.match.document.monitor.region?.name?.split(" ").collect{it.capitalize()}.join(" ")+", " + event.match.document.monitor.region?.state?.abbr?.toUpperCase())
+					// Meeting Date
+					eventMap.put("meetingDate", formatter.format(event.match.document.meetingDate))
+					// Event uuid
+					eventMap.put("uuid", event.uuid)
+					// Document Type
+					eventMap.put("documentType", event.match.document.getClass().getName().replaceAll("com.councilsearch.","")?.capitalize())
+					// Preview - Only the first, if there is one
+					if(event?.match?.previews?.size() > 0){
+						Preview preview = event?.match.previews[0]
+						eventMap.put("preview", preview.text)
+					}else{
+						eventMap.put("preview", "Preview is unavailable")
+					}
+
+					events.add(eventMap)
+				}
+
+				// If we have events build the alert map and add it to the message
+				if(events?.size() > 0){
+					Map alertMap = [:]
+
+					// Alert Id
+					alertMap.put("id", alert.id)
+					// Alert Name
+					alertMap.put("name", alert.name ?: "Un-named Alert")
+					// Alerts new events
+					alertMap.put("events", events)
+
+					alerts.add(alertMap)
+				}
+			}
+
+			// If we have any alerts add them to the message map
+			if(alerts?.size() > 0){
+				Map messageMap = [:]
+				def eventsCount = 0
+
+				// User id
+				messageMap.put("userId", user.id)
+				// User email
+				messageMap.put("email", user.username) // User name is email
+				// Date today, hopefully we dont get UTC-ed
+				messageMap.put("dateToday", formatter.format(today))
+				// alerts
+				messageMap.put("alerts", alerts)
+
+				// Find the number of new events
+				alerts.each { alertMap ->
+					eventsCount += alertMap.get("events")?.size()
+				}
+
+				messageMap.put("eventsCount", eventsCount)
+
+				// Message subject
+				messageMap.put("subject", "We found ${eventsCount} new event(s) - ${formatter.format(today)}")
+
+				messages.add(messageMap)
+			}
+		}
+
+		return messages
+	}
+
+	def markAsSent(List messages){
+		Date now = new Date()
+		List eventIds = []
+
+		// Probably a groovy collect way to do it but dont have time
+		messages.each { messageMap ->
+			messageMap.get("alerts").each{ alertMap ->
+				alertMap.get("events").each{ eventMap ->
+					def eventId = eventMap.get("id")
+
+					// Gather distinct event ids
+					if(!eventIds.contains(eventId)){
+						eventIds.add(eventId)
+					}
+				}
+			}
+		}
+
+		// Mark as read
+		eventIds.each{ eventId ->
+			try{
+				eventService.markEmailed(eventId, now)
+			}catch(Exception e){
+				log.error("ETL notifcation error: "+e)
+			}
+		}
+	}
+
+
 }

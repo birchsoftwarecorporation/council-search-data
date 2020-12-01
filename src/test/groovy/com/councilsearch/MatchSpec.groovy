@@ -3,7 +3,7 @@ package com.councilsearch
 import grails.testing.gorm.DomainUnitTest
 import spock.lang.Specification
 
-class ActivitySpec extends Specification implements DomainUnitTest<Activity> {
+class MatchSpec extends Specification implements DomainUnitTest<Match> {
 
     def setup() {
     }

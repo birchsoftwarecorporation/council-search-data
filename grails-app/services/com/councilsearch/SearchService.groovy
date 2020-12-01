@@ -101,110 +101,174 @@ class SearchService implements InitializingBean {
 	 * bringing in the SQL to help streamline? No clue why think
 	 * theres a document over 2gb
 	 */
-	@NotTransactional
 	def update(){
 		log.info("Fully updating Solr Index")
-		Sql sql = new Sql(dataSource)
 		int offset = 0
-		def maxId = 0
-		def maxIdQuery = """
-			SELECT 
-				id
-			FROM
-				document
-			ORDER BY id DESC
-		"""
-		def dataQuery = """
-			SELECT
-				# Document
-				d.id documentId,
-				d.title title,
-				replace(d.class, "com.councilsearch.", "") documentType,
-				d.meeting_date meetingDate,
-				d.date_created dateCreated,
-				d.uuid uuid,
-				d.success,
-				c.text text,
-				# Monitor
-				m.id monitorId,
-				# Region
-				r.id regionId,
-				r.name regionName,
-				replace(r.class, "com.councilsearch.", "") regionType,
-				# State
-				s.name stateName,
-				s.abbr stateAbbr
-			FROM
-				document d
-				left join content c on d.id = c.document_id
-				left join monitor m on m.id = d.monitor_id
-				left join region r on r.id = m.region_id
-				left join state s on s.id = r.state_id
-		"""
-
-		// Find the largest id for batching
-		try {
-			maxId = sql.rows(maxIdQuery, 0, 1)?.get(0)?.get("id")
-		} catch (Exception e) {
-			log.error("Could not query for Search Documents: " + e)
-		}
+		def maxId = queryService.getMaxDocumentId()
 
 		// Calculate batch number
-		log.info("Found a maxId: ${maxId}")
+		log.info("Found a max document Id: ${maxId}")
 
 		// Use maxId (or row) to calculate offset
 		while(offset < maxId){
-			log.info("Processing offset row: ${offset}")
+			List docMaps = queryService.getAllSearchDocuments(offset, SEARCH_INDEX_BATCH_SIZE)
+			Iterator dataItr = docMaps.iterator()
 
-			try {
-				def dataItr = sql.rows(dataQuery, offset, SEARCH_INDEX_BATCH_SIZE).iterator()
-
-				// Grab the list iterator and go through the maps
-				while(dataItr.hasNext()){
-					def data = dataItr.next()
-
-					// Dont upload to Solr if the processing didnt end with a success
-					if(!data.get("success")){
-						continue
-					}
-
-					try{
-						SolrInputDocument sDoc = new SolrInputDocument()
-
-						sDoc.addField("id", data.get("documentId"))
-						sDoc.addField("state", data.get("stateName"))
-						sDoc.addField("state_abbr", data.get("stateAbbr"))
-						sDoc.addField("region_id", data.get("regionId"))
-						sDoc.addField("region", data.get("regionName"))
-						sDoc.addField("region_type", data.get("regionType"))
-						sDoc.addField("monitor_id", data.get("monitorId"))
-						sDoc.addField("title", data.get("title") ?: "No Title")
-						sDoc.addField("document_type", data.get("documentType").replace("com.councilsearch.",""))
-						sDoc.addField("meeting_date", data.get("meetingDate"))
-						sDoc.addField("date_created", data.get("dateCreated"))
-						sDoc.addField("uuid", data.get("uuid"))
-						sDoc.addField("content", data.get("text") ?: "")
-
-						SOLR_CLIENT_UPDATE.add(SOLR_CLUSTER_NAME, sDoc)
-					}catch(Exception e){
-						log.error("Could not perform Solr update all for batch:${offset} "+e)
-					}
-
-					// Remove it when we are done
-					dataItr.remove()
-				}
-			} catch (Exception e) {
-				log.error("Could not add batch of documents from MySQL to Solr: " + e)
+			// Grab the list iterator and go through the maps
+			while(dataItr.hasNext()){
+				Map docMap = dataItr.next()
+				// Add the doc to index queue
+				solrAddDocument(docMap)
+				// Remove it when we are done
+				dataItr.remove()
 			}
 
-			// Commit the batch
-			SOLR_CLIENT_UPDATE.commit(SOLR_CLUSTER_NAME)
+			try{
+				// Commit the batch
+				SOLR_CLIENT_UPDATE.commit(SOLR_CLUSTER_NAME)
+			}catch(Exception e){
+				log.error("Could not commit batch ${offset}")
+			}
+
+			// Increase for the next round
 			offset += SEARCH_INDEX_BATCH_SIZE
 		}
 
-		sql.close()
 		log.info("Finished fully updating Solr Index")
 	}
+
+	def solrAddDocument(Map docMap){
+		def docId = docMap.get("documentId")
+
+		// Running into MySQL OutOfMemory Exception dont know how
+		String text = queryService.getContentByDocId(docId)
+
+		try{
+			SolrInputDocument sDoc = new SolrInputDocument()
+
+			sDoc.addField("id", docId)
+			sDoc.addField("state", docMap.get("stateName"))
+			sDoc.addField("state_abbr", docMap.get("stateAbbr"))
+			sDoc.addField("region_id", docMap.get("regionId"))
+			sDoc.addField("region", docMap.get("regionName"))
+			sDoc.addField("region_type", docMap.get("regionType"))
+			sDoc.addField("monitor_id", docMap.get("monitorId"))
+			sDoc.addField("title", docMap.get("title") ?: "No Title")
+			sDoc.addField("document_type", docMap.get("documentType").replace("com.councilsearch.",""))
+			sDoc.addField("meeting_date", docMap.get("meetingDate"))
+			sDoc.addField("date_created", docMap.get("dateCreated"))
+			sDoc.addField("uuid", docMap.get("uuid"))
+			sDoc.addField("content", text)
+
+			SOLR_CLIENT_UPDATE.add(SOLR_CLUSTER_NAME, sDoc)
+		}catch(Exception e){
+			log.error("Could not perform Solr update for batch "+e)
+		}
+	}
+
+//	def update(){
+//		log.info("Fully updating Solr Index")
+//		Sql sql = new Sql(dataSource)
+//		int offset = 0
+//		def maxId = 0
+//		def maxIdQuery = """
+//			SELECT
+//				id
+//			FROM
+//				document
+//			ORDER BY id DESC
+//		"""
+//		def dataQuery = """
+//			SELECT
+//				# Document
+//				d.id documentId,
+//				d.title title,
+//				replace(d.class, "com.councilsearch.", "") documentType,
+//				d.meeting_date meetingDate,
+//				d.date_created dateCreated,
+//				d.uuid uuid,
+//				d.success,
+//				c.text text,
+//				# Monitor
+//				m.id monitorId,
+//				# Region
+//				r.id regionId,
+//				r.name regionName,
+//				replace(r.class, "com.councilsearch.", "") regionType,
+//				# State
+//				s.name stateName,
+//				s.abbr stateAbbr
+//			FROM
+//				document d
+//				left join content c on d.id = c.document_id
+//				left join monitor m on m.id = d.monitor_id
+//				left join region r on r.id = m.region_id
+//				left join state s on s.id = r.state_id
+//		"""
+//
+//		// Find the largest id for batching
+//		try {
+//			maxId = sql.rows(maxIdQuery, 0, 1)?.get(0)?.get("id")
+//		} catch (Exception e) {
+//			log.error("Could not query for Search Documents: " + e)
+//		}
+//
+//		// Calculate batch number
+//		log.info("Found a maxId: ${maxId}")
+//
+//		// Use maxId (or row) to calculate offset
+//		while(offset < maxId){
+//			log.info("Processing offset row: ${offset}")
+//
+//			try {
+//				def dataItr = sql.rows(dataQuery, offset, SEARCH_INDEX_BATCH_SIZE).iterator()
+//
+//				// Grab the list iterator and go through the maps
+//				while(dataItr.hasNext()){
+//					def data = dataItr.next()
+//
+//					// Dont upload to Solr if the processing didnt end with a success
+//					if(!data.get("success")){
+//						continue
+//					}
+//
+//					try{
+//						SolrInputDocument sDoc = new SolrInputDocument()
+//
+//						sDoc.addField("id", data.get("documentId"))
+//						sDoc.addField("state", data.get("stateName"))
+//						sDoc.addField("state_abbr", data.get("stateAbbr"))
+//						sDoc.addField("region_id", data.get("regionId"))
+//						sDoc.addField("region", data.get("regionName"))
+//						sDoc.addField("region_type", data.get("regionType"))
+//						sDoc.addField("monitor_id", data.get("monitorId"))
+//						sDoc.addField("title", data.get("title") ?: "No Title")
+//						sDoc.addField("document_type", data.get("documentType").replace("com.councilsearch.",""))
+//						sDoc.addField("meeting_date", data.get("meetingDate"))
+//						sDoc.addField("date_created", data.get("dateCreated"))
+//						sDoc.addField("uuid", data.get("uuid"))
+//						sDoc.addField("content", data.get("text") ?: "")
+//
+//						SOLR_CLIENT_UPDATE.add(SOLR_CLUSTER_NAME, sDoc)
+//					}catch(Exception e){
+//						log.error("Could not perform Solr update all for batch:${offset} "+e)
+//					}
+//
+//					// Remove it when we are done
+//					dataItr.remove()
+//				}
+//			} catch (Exception e) {
+//				log.error("Could not add batch of documents from MySQL to Solr: " + e)
+//			}
+//
+//			// Commit the batch
+//			SOLR_CLIENT_UPDATE.commit(SOLR_CLUSTER_NAME)
+//			offset += SEARCH_INDEX_BATCH_SIZE
+//		}
+//
+//		sql.close()
+//		log.info("Finished fully updating Solr Index")
+//	}
 
 	def delete(String id){
 		UpdateResponse ur
@@ -269,8 +333,7 @@ class SearchService implements InitializingBean {
 	}
 
 
-	Response request(Request searchRequest){
-		SolrQuery solrQuery = searchRequest.createSolrQuery()
+	QueryResponse request(SolrQuery solrQuery){
 		QueryResponse queryResponse
 
 		try {
@@ -279,10 +342,9 @@ class SearchService implements InitializingBean {
 			log.error("Could not query Solr"+ e)
 		}
 
-		Response response = new Response(queryResponse)
-
-		return response
+		return queryResponse
 	}
+
 
 
 

@@ -3,6 +3,9 @@ package com.councilsearch
 class UrlMappings {
 
     static mappings = {
+		// http://docs.grails.org/3.3.x/guide/theWebLayer.html#urlmappings
+		// http://docs.grails.org/3.3.11/guide/theWebLayer.html#restfulMappings
+
 //        delete "/$controller/$id(.$format)?"(action:"delete")
 //        get "/$controller(.$format)?"(action:"index")
 //        get "/$controller/$id(.$format)?"(action:"show")
@@ -11,34 +14,39 @@ class UrlMappings {
 //        patch "/$controller/$id(.$format)?"(action:"patch")
 
 		// Alert
-		get "/api/alert" (controller:"alert", action:"index")
+		get "/api/alert" (controller:"alert", action:"list")
 		get "/api/alert/$id" (controller:"alert", action:"show")
+		get "/api/alert/process/$id" (controller:"alert", action:"process")
 		post "/api/alert" (controller:"alert", action:"save")
 		put "/api/alert" (controller:"alert", action:"update")
 		delete "/api/alert/$id" (controller:"alert", action:"delete")
 
-		get "/api/guest/alert" (controller:"alert", action:"index")
-		get "/api/guest/alert/$id" (controller:"alert", action:"show")
-		post "/api/guest/alert" (controller:"alert", action:"save")
-		put "/api/guest/alert" (controller:"alert", action:"update")
-		delete "/api/guest/alert/$id" (controller:"alert", action:"delete")
+		// Comments
+		post "/api/comment" (controller:"comment", action:"save")
+		put "/api/comment" (controller:"comment", action:"update")
 
+		// Documents
+		get "/api/document/$uuid" (controller:"document", action:"view")
+		get "/api/guest/document/$uuid" (controller:"document", action:"view")
+		get "/api/guest/s3/download/$uuid" (controller:"document", action:"download")
 
+		// ETL
+		get "/api/guest/etl/start/$monitorId?" (controller:"extractTransferLoad", action:"start")
+		get "/api/guest/etl/alert" (controller:"extractTransferLoad", action:"alerts")
+		get "/api/guest/etl/event" (controller:"extractTransferLoad", action:"events")
+		get "/api/guest/etl/notifications" (controller:"extractTransferLoad", action:"notifications")
 
-		// http://docs.grails.org/3.3.x/guide/theWebLayer.html#urlmappings
-		// http://docs.grails.org/3.3.11/guide/theWebLayer.html#restfulMappings
-		// State
-		get "/api/guest/state" (controller:"state", action:"index")
-		get "/api/guest/state/$id" (controller:"state", action:"show")
+		// Events
+		get "/api/event" (controller:"event", action:"list")
+		get "/api/event/$uuid" (controller:"event", action:"show")
+		post "/api/event/$uuid/description" (controller:"event", action:"description")
+		post "/api/event/$uuid/comment" (controller:"event", action:"comment")
+		post "/api/event/$uuid/owner" (controller:"event", action:"owner")
+		post "/api/event/$uuid/status" (controller:"event", action:"status")
+		get "/api/event/$uuid/members" (controller:"event", action:"members")
 
-		// Region
-		get "/api/states/$abbr/regions/$type" (controller:"region", action:"index")
-		get "/api/regions/$id" (controller:"region", action:"show")
-		get "/api/regions/create" (controller:"region", action:"error")
-		post "/api/regions" (controller:"region", action:"error")
-		get "/api/regions/$id/edit" (controller:"region", action:"error")
-		put "/api/regions/$id" (controller:"region", action:"error")
-		delete "/api/regions/$id" (controller:"region", action:"error")
+		// Leads
+		post "/api/guest/contact" (controller:"message", action:"save")
 
 		// Monitor
 		get "/api/regions/$regionId/monitors" (controller:"monitor", action:"index")
@@ -48,41 +56,40 @@ class UrlMappings {
 		put "/api/monitors" (controller:"monitor", action:"update")
 //		delete "/api/regions/$id" (controller:"region", action:"error")
 
+		// Region
+		get "/api/guest/state/$abbr/regions" (controller:"region", action:"list")
+		get "/api/regions/$id" (controller:"region", action:"show")
+		get "/api/regions/create" (controller:"region", action:"error")
+		post "/api/regions" (controller:"region", action:"error")
+		get "/api/regions/$id/edit" (controller:"region", action:"error")
+		put "/api/regions/$id" (controller:"region", action:"error")
+		delete "/api/regions/$id" (controller:"region", action:"error")
+
 		// Request
 		post "/api/request/importio" (controller:"request", action:"importio")
-
-		// ETL
-		get "/api/guest/etl/start/$monitorId?" (controller:"extractTransferLoad", action:"start")
 
 		// Search
 		post "/api/search" (controller:"search", action:"request")
 		post "/api/guest/search" (controller:"search", action:"request")
-		put "/api/search/$id?" (controller:"search", action:"update")
+		put "/api/guest/search/$id?" (controller:"search", action:"update")
 		delete "/api/search/$id?" (controller:"search", action:"delete")
-
-		// Suggestions
-		get "/api/guest/suggest/$word/$count" (controller:"search", action:"suggest")
-		get "/api/suggest/$word/$count" (controller:"search", action:"suggest")
-
-		// Documents
-		get "/api/document/$uuid" (controller:"document", action:"view")
-		get "/api/guest/document/$uuid" (controller:"document", action:"view")
-		get "/api/guest/s3/download/$uuid" (controller:"document", action:"download")
-
-		// Sales Leads
-		get "/api/guest/lead" (controller:"lead", action:"index")
-		post "/api/guest/contact" (controller:"lead", action:"save")
 
 		// Sitemap
 		get "/api/sitemap/$fileName" (controller: "sitemap", action:"view")
 		put "/api/guest/sitemap" (controller: "sitemap", action:"update")
 		delete "/api/sitemap" (controller: "sitemap", action:"delete")
 
+		// State
+		get "/api/guest/state" (controller:"state", action:"list")
+		get "/api/guest/state/$id" (controller:"state", action:"show")
+
+		// Suggestions
+		get "/api/guest/suggest/$word/$count" (controller:"search", action:"suggest")
+		get "/api/suggest/$word/$count" (controller:"search", action:"suggest")
+
 		// User
-		get "/api/user" (controller:"user", action:"index")
+		get "/api/user" (controller:"user", action:"list")
 		get "/api/user/$id" (controller:"user", action:"show")
-//		post "/api/user" (controller:"user", action:"save")
-//		put "/api/user" (controller:"user", action:"update")
 		delete "/api/user/$id" (controller:"user", action:"delete")
 
 
