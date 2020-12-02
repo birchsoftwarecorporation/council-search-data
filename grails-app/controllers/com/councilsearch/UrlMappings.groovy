@@ -26,8 +26,9 @@ class UrlMappings {
 		put "/api/comment" (controller:"comment", action:"update")
 
 		// Documents
-		get "/api/document/$uuid" (controller:"document", action:"view")
-		get "/api/guest/document/$uuid" (controller:"document", action:"view")
+		get "/api/document/$uuid" (controller:"document", action:"show")
+		get "/api/guest/document/rextract/$uuid" (controller:"document", action:"reExtract")
+		get "/api/guest/document/$uuid" (controller:"document", action:"show")
 		get "/api/guest/s3/download/$uuid" (controller:"document", action:"download")
 
 		// ETL

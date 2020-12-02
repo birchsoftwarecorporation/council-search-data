@@ -4,8 +4,9 @@ import grails.converters.JSON
 
 class DocumentController {
 	def amazonWebService
+	def documentService
 
-	def view(){
+	def show(){
 		def uuid = params.uuid
 		log.info("Viewing Document:${uuid}")
 
@@ -104,6 +105,22 @@ class DocumentController {
 //		}
 
 		render "delete"
+	}
+
+	def reExtract(){
+		def uuid = params.uuid
+		log.info("ReExtract Document:${uuid}")
+
+		if(!uuid){
+			response.status = 400
+			log.error("No UUID specified")
+			render ([error: "No UUID specified"] as JSON)
+			return
+		}
+
+		documentService.reExtract(uuid)
+
+		render "ReExtracted document with UUID:${uuid}"
 	}
 
 }
