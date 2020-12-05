@@ -34,7 +34,7 @@ class DocumentController {
 		docMap.put("monitorURL", document.monitor.url)
 		docMap.put("dateCreated", document.dateCreated)
 		docMap.put("meetingDate", document.meetingDate)
-		docMap.put("lastModified", document.lastModified)
+		docMap.put("lastModified", document.lastUpdated)
 		docMap.put("documentType", document.getClass().name?.replace("com.councilsearch.","").capitalize())
 		docMap.put("title", document.title)
 		docMap.put("url", document.url)

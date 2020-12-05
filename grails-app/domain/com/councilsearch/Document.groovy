@@ -7,7 +7,7 @@ class Document {
 	String meetingDateStr
 	String hash
 	Date dateCreated
-	Date lastModified
+	Date lastUpdated
 	Integer statusCode
 	String message
 	String contentType
@@ -33,6 +33,7 @@ class Document {
 		extracted(nullable: true, blank: true)
 		indexed(nullable: true, blank: true)
 		uuid(nullable: false, blank: false, unique: true)
+		lastUpdated(nullable: true, blank: true)
 	}
 
 	static mapping = { }

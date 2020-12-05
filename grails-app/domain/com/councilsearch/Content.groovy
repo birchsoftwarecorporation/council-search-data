@@ -3,12 +3,13 @@ package com.councilsearch
 class Content {
 	String text
 	Date dateCreated
-	Date lastModified // TODO - Migrate to lastUpdated
+	Date lastUpdated
 
 	static belongsTo =  [document: Document]
 
 	static constraints = {
 		text(nullable: true, blank: true)
+		lastUpdated(nullable: true, blank: true)
 	}
 
 	static mapping = {

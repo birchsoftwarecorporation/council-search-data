@@ -90,7 +90,7 @@ class QueryService {
 			Map docMap = dItr.next()
 
 			String query = """
-				INSERT INTO document (monitor_id, class, version, title, date_created, last_modified, 
+				INSERT INTO document (monitor_id, class, version, title, date_created, last_updated, 
 									meeting_date_str, meeting_date, url, extracted, indexed, status_code, 
 									content_type, location, hash, uuid, success, message)
 				VALUES(:monitorId, :docType, 1, :title, now(), now(), 
@@ -121,7 +121,7 @@ class QueryService {
 						if(docId != null && docId > 0){
 							docMap.put("id", docId)
 							String contentQuery = """
-								INSERT into content(version, date_created, last_modified, document_id, text)
+								INSERT into content(version, date_created, last_updated, document_id, text)
 								VALUES(1, now(), now(), :docId, :text);
 							"""
 
