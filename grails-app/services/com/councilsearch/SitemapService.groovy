@@ -40,19 +40,21 @@ class SitemapService implements InitializingBean {
 		}
 
 		// Grab all monitor data and the latest document modified date
-		List monitorData = queryService.distinctMonitorIds(sql)
+//		List monitorData2 = queryService.distinctMonitorIds(sql)
+		List monitorData = [47, 48] // Temp sitemap test
 		Iterator mDataItr = monitorData.iterator()
 
 		while(mDataItr.hasNext()){
-			def mMap = mDataItr.next()
-
-			// Need to column
-			if(mMap.size() != 1){
-				log.warn("Incorrect number of mMap columns")
-				continue
-			}
-
-			def monitorId = mMap[0]
+//			def mMap = mDataItr.next()
+//
+//			// Need to column
+//			if(mMap.size() != 1){
+//				log.warn("Incorrect number of mMap columns")
+//				continue
+//			}
+//
+//			def monitorId = mMap[0]
+			def monitorId = mDataItr.next()
 
 			// Grab this monitors document data
 			List sMapInfo = queryService.getSitemapInfo(sql, monitorId)
@@ -152,9 +154,11 @@ class SitemapService implements InitializingBean {
 	// Creates a special SEO friendly unblocked URL
 	def createURL(def state, def region, def meetingType, def docType, LocalDate meetingDate, def uuid){
 		// state/region/meetingType/docType/year/month/day#uuid
-		String url = "${SITEMAP_BASE_URL}/${docType?.toLowerCase()}/${state?.replaceAll("\\s","-")?.toLowerCase()}/"+
-				"${region.replaceAll("\\s","-")?.toLowerCase()}/${meetingType?.toLowerCase()}/"+
-				"${meetingDate.getYear()}/${meetingDate.month}/${meetingDate.getDayOfMonth()}#${uuid}"
+//		String url = "${SITEMAP_BASE_URL}/${docType?.toLowerCase()}/${state?.replaceAll("\\s","-")?.toLowerCase()}/"+
+//				"${region.replaceAll("\\s","-")?.toLowerCase()}/${meetingType?.toLowerCase()}/"+
+//				"${meetingDate.getYear()}/${meetingDate.month}/${meetingDate.getDayOfMonth()}#${uuid}"
+		String url = "${SITEMAP_BASE_URL}/document/${uuid}"
+		
 		return url
 	}
 
