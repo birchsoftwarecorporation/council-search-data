@@ -8,6 +8,8 @@ import groovy.sql.Sql
 import org.springframework.beans.factory.InitializingBean
 import org.apache.commons.io.FileUtils
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -76,6 +78,10 @@ class SitemapService implements InitializingBean {
 		int urlCnt = 0
 		String fileNamePrefix = "sitemap-${monitorId}"
 		String sitemapFileName = fileNamePrefix+".xml.gz"
+		Date today = Calendar.getInstance().getTime()
+		DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd")
+		String todayStr = dateFormat.format(today)
+
 		log.info("Creating for Monitor:${monitorId} with ${sMapInfo.size()} items")
 
 		// Assumption - never going to have 50,000 documents to one monitor
@@ -113,7 +119,8 @@ class SitemapService implements InitializingBean {
 
 				// Create the entry
 				WebSitemapUrl wsu = new WebSitemapUrl.Options(url)
-						.lastMod(dateCreated.format(SITEMAP_DATE_FORMAT))
+//						.lastMod(dateCreated.format(SITEMAP_DATE_FORMAT))
+						.lastMod(todayStr)
 						.priority(0.9) // default
 						.changeFreq(ChangeFreq.NEVER)
 						.build()
@@ -158,7 +165,7 @@ class SitemapService implements InitializingBean {
 //				"${region.replaceAll("\\s","-")?.toLowerCase()}/${meetingType?.toLowerCase()}/"+
 //				"${meetingDate.getYear()}/${meetingDate.month}/${meetingDate.getDayOfMonth()}#${uuid}"
 		String url = "${SITEMAP_BASE_URL}/document/${uuid}"
-		
+
 		return url
 	}
 
