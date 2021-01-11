@@ -1,0 +1,35 @@
+version: 2
+jobs:
+  build:
+    environment:
+      _JAVA_OPTIONS: "-Xmx3g"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2"
+    docker:
+      - image: circleci/openjdk:8-jdk
+    steps:
+      - checkout
+      - restore_cache:
+          key: grailsapp-{{ checksum "build.gradle" }}-{{ checksum "gradle.properties" }}
+      - run: chmod +x gradlew
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: grailsapp-{{ checksum "build.gradle" }}-{{ checksum "gradle.properties" }}
+      - run: ./gradlew clean
+      #- run: ./gradlew test
+      - run:
+          name: Assemble JAR
+          command: |
+            # Skip this for other nodes
+            if [ "$CIRCLE_NODE_INDEX" == 0 ]; then
+              ./gradlew war
+            fi
+      - store_artifacts:
+          path: build/libs
+      - store_test_results:
+          path: build/test-results
+workflows:
+  version: 2
+  workflow:
+    jobs:
+    - build 
