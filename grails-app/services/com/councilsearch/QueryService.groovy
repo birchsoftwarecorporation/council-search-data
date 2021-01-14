@@ -299,8 +299,9 @@ class QueryService {
 	}
 
 	// Trying to keep the connection open for this one
-	def getSitemapInfo(Sql sql, def monitorId) {
+	def getSitemapInfo(Sql sql, def monitorId, def yearAgoStr) {
 		List results = []
+
 		String query = """
 			select 
 				s.name state,
@@ -314,11 +315,11 @@ class QueryService {
 				left join region r on r.id = m.region_id
 				left join state s on s.id = r.state_id
 			where d.monitor_id = :monitorId
-			and d.meeting_date is not null
+			and (d.meeting_date is not null and d.meeting_date > :yearAgo)
 		"""
 
 		try{
-			results = sql.rows(query, [monitorId: monitorId])
+			results = sql.rows(query, [monitorId: monitorId, yearAgo: yearAgoStr])
 		}catch(Exception e){
 			log.error("Could not query for latest Sitemap Information by MonitorId"+ e)
 		}

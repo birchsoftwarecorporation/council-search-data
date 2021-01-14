@@ -7,7 +7,6 @@ import com.redfin.sitemapgenerator.WebSitemapUrl
 import groovy.sql.Sql
 import org.springframework.beans.factory.InitializingBean
 import org.apache.commons.io.FileUtils
-
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -33,6 +32,7 @@ class SitemapService implements InitializingBean {
 	boolean create(){
 		Sql sql = new Sql(dataSource)
 		boolean success = true
+		String yearAgoStr = LocalDate.now().minusYears(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 		List<String> siteMapFileNames = []
 		List<String> staticSites = ["", "search", "contact"]
 		File sitemapDir = new File(SITEMAP_DIR)
@@ -42,12 +42,13 @@ class SitemapService implements InitializingBean {
 			return false
 		}
 
+		log.info("Finding sitemap documents newer than: ${yearAgoStr}")
+
 		// Generate the master file (default pages home/contact/search
 		siteMapFileNames.add(generateStaticSiteMap(sitemapDir, staticSites))
 
 		// Grab all monitor data and the latest document modified date
 		List monitorData = queryService.distinctMonitorIds(sql)
-//		List monitorData = [47, 48] // Temp sitemap test
 		Iterator mDataItr = monitorData.iterator()
 
 		while(mDataItr.hasNext()){
@@ -60,10 +61,9 @@ class SitemapService implements InitializingBean {
 			}
 
 			def monitorId = mMap[0]
-//			def monitorId = mDataItr.next()
 
 			// Grab this monitors document data
-			List sMapInfo = queryService.getSitemapInfo(sql, monitorId)
+			List sMapInfo = queryService.getSitemapInfo(sql, monitorId, yearAgoStr)
 
 			// Generate the Sitemap file
 			String siteMapFileName = generateSiteMap(monitorId, sitemapDir, sMapInfo)
