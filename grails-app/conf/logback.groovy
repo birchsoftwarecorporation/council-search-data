@@ -11,4 +11,4 @@ appender("File-Appender", FileAppender) {
 
 root(ERROR, ["File-Appender"])
 logger("com.councilsearch", INFO, ["File-Appender"], false)
-logger('grails.plugins', TRACE)
+logger('grails.plugins', INFO)

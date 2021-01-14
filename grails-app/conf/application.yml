@@ -1,8 +1,11 @@
 ---
 grails:
     profile: rest-api
+    # http://docs.grails.org/latest/guide/theWebLayer.html#cors
+    cors:
+        enabled: true
     codegen:
-        defaultPackage:
+        defaultPackage: com.councilsearch
     gorm:
         reactor:
             # Whether to translate GORM events into Reactor events
