@@ -22,7 +22,7 @@ jobs:
           command: |
             # Skip this for other nodes
             if [ "$CIRCLE_NODE_INDEX" == 0 ]; then
-              ./gradlew war
+              ./gradlew bootWar
             fi
       - store_artifacts:
           path: build/libs

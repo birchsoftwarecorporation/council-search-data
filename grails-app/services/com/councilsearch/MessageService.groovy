@@ -42,6 +42,11 @@ class MessageService implements InitializingBean {
     }
 
 	def sendNotifications(List messages){
+		if(!EMAIL_ENABLED){
+			log.info("Email is disabled for this system")
+			return
+		}
+
 		Iterator mItr = messages.iterator()
 
 		while(mItr.hasNext()){
@@ -51,6 +56,7 @@ class MessageService implements InitializingBean {
 
 			// Override - mostly for testing
 			if(EMAIL_OVERRIDE){
+				log.info("Using email override address: ${OVERRIDE_ADDRESS}")
 				toAddress = OVERRIDE_ADDRESS
 			}
 

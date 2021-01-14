@@ -248,16 +248,16 @@ class EventService {
 
 	def markEmailed(def eventId, Date date) throws Exception{
 		log.info("Marking Event:${eventId} as emailed")
-		Event event = Event.get(eventId)
-
-		if(!event){
-			throw new Exception("Could not mark Event:${eventId} as emailed, it doesnt exist")
-		}
-
-		event.emailed = date
-
-		if(!event.save(flush: true)){
-			throw new Exception("Could not mark Event:${eventId} as emailed "+event.errors)
-		}
+//		Event event = Event.get(eventId)
+//
+//		if(!event){
+//			throw new Exception("Could not mark Event:${eventId} as emailed, it doesnt exist")
+//		}
+//
+//		event.emailed = date
+//
+//		if(!event.save(flush: true)){
+//			throw new Exception("Could not mark Event:${eventId} as emailed "+event.errors)
+//		}
 	}
 }

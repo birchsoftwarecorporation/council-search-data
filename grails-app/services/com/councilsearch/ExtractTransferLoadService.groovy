@@ -48,13 +48,6 @@ class ExtractTransferLoadService implements InitializingBean {
 	Integer ETL_REGION_THREAD
 	Integer ETL_DOCUMENT_BATCH_SIZE
 
-	String EMAIL_BASE_URL
-	Boolean EMAIL_ENABLED
-	Boolean EMAIL_OVERRIDE
-	String OVERRIDE_ADDRESS
-	String FROM_ADDRESS
-	String BCC_ADDRESS
-
 	// TODO - Separate this to its own microservice
 
 	public void afterPropertiesSet() throws Exception {
@@ -64,7 +57,6 @@ class ExtractTransferLoadService implements InitializingBean {
 		TEMP_DIR = CustomConfig.findByName("TEMP_DIR")?.getValue() ?: ""
 		ETL_REGION_THREAD = CustomConfig.findByName("ETL_REGION_THREAD")?.getValue() as Integer ?: 2
 		ETL_DOCUMENT_BATCH_SIZE = CustomConfig.findByName("ETL_DOCUMENT_BATCH_SIZE")?.getValue() as Integer ?: 5
-
 		PDF_OVERLAY_LOCATION = this.class.classLoader.getResource('overlay.pdf')?.file
 	}
 
@@ -1009,14 +1001,12 @@ class ExtractTransferLoadService implements InitializingBean {
 	}
 
 	def notifications(){
-		if(EMAIL_ENABLED) {
-			// Build notification data
-			List<Map> messages = buildMessageData()
-			// Send notifications
-			messageService.sendNotifications(messages)
-			// Mark events as sent
-			markAsSent(messages)
-		}
+		// Build notification data
+		List<Map> messages = buildMessageData()
+		// Send notifications
+		messageService.sendNotifications(messages)
+		// Mark events as sent
+		markAsSent(messages)
 	}
 
 	def buildMessageData(){
@@ -1026,6 +1016,7 @@ class ExtractTransferLoadService implements InitializingBean {
 
 		// Start with active users
 		User.findAllByEnabledAndEmailActive(true, true).each{ user ->
+			log.info("Building notification data for user:${user.username}")
 			List alerts = []
 
 			// Get all active users alerts

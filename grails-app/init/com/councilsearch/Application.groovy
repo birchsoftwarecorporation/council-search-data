@@ -2,10 +2,10 @@ package com.councilsearch
 
 import grails.boot.GrailsApp
 import grails.boot.config.GrailsAutoConfiguration
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.solr.SolrAutoConfiguration
 
-@EnableAutoConfiguration(exclude = [SolrAutoConfiguration])
+import groovy.transform.CompileStatic
+
+@CompileStatic
 class Application extends GrailsAutoConfiguration {
     static void main(String[] args) {
         GrailsApp.run(Application, args)

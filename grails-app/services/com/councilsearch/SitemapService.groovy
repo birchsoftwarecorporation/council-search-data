@@ -34,6 +34,7 @@ class SitemapService implements InitializingBean {
 		Sql sql = new Sql(dataSource)
 		boolean success = true
 		List<String> siteMapFileNames = []
+		List<String> staticSites = ["", "search", "contact"]
 		File sitemapDir = new File(SITEMAP_DIR)
 
 		if(sitemapDir == null || !sitemapDir.exists()){
@@ -41,22 +42,25 @@ class SitemapService implements InitializingBean {
 			return false
 		}
 
+		// Generate the master file (default pages home/contact/search
+		siteMapFileNames.add(generateStaticSiteMap(sitemapDir, staticSites))
+
 		// Grab all monitor data and the latest document modified date
-//		List monitorData2 = queryService.distinctMonitorIds(sql)
-		List monitorData = [47, 48] // Temp sitemap test
+		List monitorData = queryService.distinctMonitorIds(sql)
+//		List monitorData = [47, 48] // Temp sitemap test
 		Iterator mDataItr = monitorData.iterator()
 
 		while(mDataItr.hasNext()){
-//			def mMap = mDataItr.next()
-//
-//			// Need to column
-//			if(mMap.size() != 1){
-//				log.warn("Incorrect number of mMap columns")
-//				continue
-//			}
-//
-//			def monitorId = mMap[0]
-			def monitorId = mDataItr.next()
+			def mMap = mDataItr.next()
+
+			// Need to column
+			if(mMap.size() != 1){
+				log.warn("Incorrect number of mMap columns")
+				continue
+			}
+
+			def monitorId = mMap[0]
+//			def monitorId = mDataItr.next()
 
 			// Grab this monitors document data
 			List sMapInfo = queryService.getSitemapInfo(sql, monitorId)
@@ -72,6 +76,54 @@ class SitemapService implements InitializingBean {
 		generateSitemapIndex(siteMapFileNames)
 
 		return success
+	}
+
+	def generateStaticSiteMap(File siteMapDir, List staticPages){
+		log.info("Creating static sitemap")
+
+		String fileNamePrefix = "sitemap-static"
+		String sitemapFileName = fileNamePrefix+".xml.gz"
+		Date today = Calendar.getInstance().getTime()
+		DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd")
+		String todayStr = dateFormat.format(today)
+
+		WebSitemapGenerator wsg = WebSitemapGenerator.builder(SITEMAP_BASE_URL, siteMapDir)
+				.fileNamePrefix(fileNamePrefix)
+				.gzip(true)
+				.build()
+
+		// Build the static page references
+		for(def staticPageName : staticPages){
+			log.debug("Processing entry: "+staticPageName)
+			String url = SITEMAP_BASE_URL
+
+			try{
+				// Doing this to include the base url
+				if(!"".equalsIgnoreCase(staticPageName)){
+					url = url+"/${staticPageName}"
+				}
+
+				// Create the entry
+				WebSitemapUrl wsu = new WebSitemapUrl.Options(url)
+						.lastMod(todayStr)
+						.priority(1.0) // default
+						.changeFreq(ChangeFreq.DAILY)
+						.build()
+				wsg.addUrl(wsu)
+			}catch(Exception e){
+				log.error("Could not create static sitemap entry "+e)
+			}
+		}
+
+		// Write the static file
+		try{
+			wsg.write()
+		}catch(Exception e){
+			sitemapFileName = null // Failed to create file
+			log.error("Could not create static Sitemap file "+e)
+		}
+
+		return sitemapFileName
 	}
 
 	def generateSiteMap(def monitorId, File siteMapDir, def sMapInfo){
@@ -114,15 +166,14 @@ class SitemapService implements InitializingBean {
 				LocalDate dateCreated = LocalDate.parse(dateCreatedStr, MYSQL_DATE_FORMAT)
 				LocalDate meetingDate = LocalDate.parse(meetingDateStr, MYSQL_DATE_FORMAT)
 
-
-				def url = createURL(state, region, "council", docType, meetingDate, uuid)
+				String url = "${SITEMAP_BASE_URL}/document/${uuid}"
 
 				// Create the entry
 				WebSitemapUrl wsu = new WebSitemapUrl.Options(url)
 //						.lastMod(dateCreated.format(SITEMAP_DATE_FORMAT))
 						.lastMod(todayStr)
-						.priority(0.9) // default
-						.changeFreq(ChangeFreq.NEVER)
+						.priority(0.75) // default
+						.changeFreq(ChangeFreq.DAILY)
 						.build()
 				wsg.addUrl(wsu)
 				urlCnt++
@@ -157,18 +208,6 @@ class SitemapService implements InitializingBean {
 
 		sig.write()
 	}
-
-	// Creates a special SEO friendly unblocked URL
-	def createURL(def state, def region, def meetingType, def docType, LocalDate meetingDate, def uuid){
-		// state/region/meetingType/docType/year/month/day#uuid
-//		String url = "${SITEMAP_BASE_URL}/${docType?.toLowerCase()}/${state?.replaceAll("\\s","-")?.toLowerCase()}/"+
-//				"${region.replaceAll("\\s","-")?.toLowerCase()}/${meetingType?.toLowerCase()}/"+
-//				"${meetingDate.getYear()}/${meetingDate.month}/${meetingDate.getDayOfMonth()}#${uuid}"
-		String url = "${SITEMAP_BASE_URL}/document/${uuid}"
-
-		return url
-	}
-
 
 	File getSitemap(String fileName){
 		File file

@@ -2,7 +2,7 @@ package com.councilsearch
 
 class UrlMappings {
 
-    static mappings = {
+	static mappings = {
 		// http://docs.grails.org/3.3.x/guide/theWebLayer.html#urlmappings
 		// http://docs.grails.org/3.3.11/guide/theWebLayer.html#restfulMappings
 
@@ -93,9 +93,8 @@ class UrlMappings {
 		get "/api/user/$id" (controller:"user", action:"show")
 		delete "/api/user/$id" (controller:"user", action:"delete")
 
-
 		"/"(controller: 'application', action:'index')
-        "500"(view: '/error')
-        "404"(view: '/notFound')
-    }
+		"500"(view: '/error')
+		"404"(view: '/notFound')
+	}
 }

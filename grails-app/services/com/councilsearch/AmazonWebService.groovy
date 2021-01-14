@@ -20,8 +20,6 @@ import org.springframework.beans.factory.InitializingBean
 @Transactional
 class AmazonWebService implements InitializingBean {
 
-	PageRenderer groovyPageRenderer
-
 	// AWS S3
 	String S3_BUCKET
 	String S3_DOCUMENTS_FOLDER
