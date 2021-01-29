@@ -44,10 +44,8 @@ dependencies {
 	// AWS
 	compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.718'
 	compile group: 'com.amazonaws', name: 'aws-java-sdk-ses', version: '1.11.873'
-	// PST Lib
-	compile group: 'com.pff', name: 'java-libpst', version: '0.9.3'
 	// Apache Tika
-	compile (group: 'org.apache.tika', name: 'tika-parsers', version: '1.24')
+	compile group: 'org.apache.tika', name: 'tika-parsers', version: '1.24'
 	// Apache Solr
 	compile group: 'org.apache.solr', name: 'solr-solrj', version: '8.4.1'
 	// Apache HTTP Client
@@ -60,7 +58,7 @@ dependencies {
 	compile group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.10.3'
 	compile group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.10.3'
 	// MySQL
-	runtime 'mysql:mysql-connector-java:5.1.48'
+	runtime 'mysql:mysql-connector-java:8.0.23'
 	// Spring Security
 	compile 'org.grails.plugins:spring-security-core:4.0.3'
 	compile "org.grails.plugins:spring-security-rest:3.0.0.RC1"
@@ -108,16 +106,21 @@ dependencies {
 }
 
 bootRun {
-	grails.pathingJar = true
-    ignoreExitValue true
-    jvmArgs(
-        '-Dspring.output.ansi.enabled=always',
-        '-noverify', 
-        '-XX:TieredStopAtLevel=1',
-        '-Xmx2048m')
-    sourceResources sourceSets.main
-    String springProfilesActive = 'spring.profiles.active'
-    systemProperty springProfilesActive, System.getProperty(springProfilesActive)
+	doFirst {
+		delete files("C:/BirchSoftwareCorp/home/council-search-home/logs/council-search-data.log")
+	}
+	grails.pathingJar = true // Windows issue
+	ignoreExitValue true
+	jvmArgs(
+			'-Dspring.output.ansi.enabled=always',
+			'-noverify',
+			'-XX:TieredStopAtLevel=1',
+			'-Dfile.encoding=UTF-8',
+			'-Djava.io.tmpdir=C:/BirchSoftwareCorp/home/council-search-home/tmp',
+			'-Xmx10240m')
+	sourceResources sourceSets.main
+	String springProfilesActive = 'spring.profiles.active'
+	systemProperty springProfilesActive, System.getProperty(springProfilesActive)
 }
 
 bootWar {

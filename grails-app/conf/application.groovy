@@ -1,6 +1,8 @@
 // Added by the Spring Security Core plugin:
 grails.plugin.springsecurity.rest.login.endpointUrl='/api/login'
 grails.plugin.springsecurity.rest.logout.endpointUrl = '/api/logout'
+grails.plugin.springsecurity.password.algorithm = 'bcrypt'
+grails.plugin.springsecurity.password.bcrypt.logrounds = 10
 grails.plugin.springsecurity.logout.postOnly = false
 grails.plugin.springsecurity.rest.token.validation.useBearerToken = true
 grails.plugin.springsecurity.rest.login.useJsonCredentials=true

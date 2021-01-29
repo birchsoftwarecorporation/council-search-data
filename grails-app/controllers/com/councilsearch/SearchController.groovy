@@ -69,14 +69,4 @@ class SearchController {
 
 		render suggestions.take(count) as JSON
 	}
-
-//	def tika(){
-//		File file = new File("C:\\birch-home\\gig\\PiaseckiT-Email.pst")
-//		log.info("Starting...")
-//		searchService.processPSTFile(file)
-//		log.info("End")
-//
-//		render ([status: "Finished"] as JSON)
-//	}
-
 }

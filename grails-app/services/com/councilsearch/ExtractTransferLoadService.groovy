@@ -16,6 +16,7 @@ import org.apache.pdfbox.tools.TextToPDF
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission
 import org.apache.pdfbox.text.PDFTextStripper
+import org.apache.solr.client.solrj.SolrQuery
 import org.apache.solr.client.solrj.response.QueryResponse
 import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.SolrDocumentList
@@ -109,7 +110,7 @@ class ExtractTransferLoadService implements InitializingBean {
 				Long regionId = regionItr.next()
 				List docPayloads = docsByRegion.get(regionId)
 
-				// Take the list of documents and batch them too to commit them
+				// Take the list of documents and batch them to commit them
 				docPayloads.collate(ETL_DOCUMENT_BATCH_SIZE).each { docPayloadsBatch ->
 					count = count + ETL_DOCUMENT_BATCH_SIZE // Just for logging info
 					log.debug("Processing Region:${regionId} document batch:${count} of ${docPayloads?.size()}")
@@ -135,7 +136,8 @@ class ExtractTransferLoadService implements InitializingBean {
 	def processMonitor(Map monitor){
 		boolean textDedup = monitor.hashDedup ?: false
 		log.info "Gathering Monitor:${monitor.monitorId} data from import.io"
-		List docMaps = getImportData(monitor)
+		List docMaps = getImportData(monitor).take(10)
+
 		log.info "Monitor:${monitor.monitorId} found ${docMaps?.size()} documents"
 
 		// Dont dedup urls will dedup based on the text downstream
@@ -884,9 +886,10 @@ class ExtractTransferLoadService implements InitializingBean {
 					if(!"".equals(phrase)){
 						// Create request
 						Request searchRequest = new Request(phrase, subSetRIds)
-						QueryResponse queryResponse = searchService.request(searchRequest.createSolrQueryMin())
+						SolrQuery sq = searchRequest.createSolrQueryMin()
+						QueryResponse queryResponse = searchService.request(sq)
 
-						// Going to parse this and not use the Repsonse obj
+						// Going to parse this and not use the Response obj
 						if(queryResponse != null){
 							SolrDocumentList solrDocList = queryResponse.getResults()
 							Map hlMap = queryResponse.getHighlighting()
@@ -1040,7 +1043,7 @@ class ExtractTransferLoadService implements InitializingBean {
 					// Event uuid
 					eventMap.put("uuid", event.uuid)
 					// Document Type
-					eventMap.put("documentType", event.match.document.getClass().getName().replaceAll("com.councilsearch.","")?.capitalize())
+					eventMap.put("documentType", Hibernate.getClass(event.match.document).getName().replaceAll("com.councilsearch.","")?.capitalize())
 					// Preview - Only the first, if there is one
 					if(event?.match?.previews?.size() > 0){
 						Preview preview = event?.match.previews[0]

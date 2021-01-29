@@ -1,8 +1,8 @@
 package com.councilsearch
 
 import grails.gorm.transactions.Transactional
+import org.hibernate.Hibernate
 
-@Transactional
 class EventService {
 
 	def queryService
@@ -12,7 +12,7 @@ class EventService {
 		List eventMaps = []
 
 		queryService.getEventsByUser(user.id).unique().each{ eventId ->
-			Event event = Event.get(eventId)
+			Event event = Event.read(eventId)
 
 			// Move on if the Alert is marked "removed"
 			if(event != null && !"removed".equalsIgnoreCase(event.match.alert.status)){
@@ -26,7 +26,7 @@ class EventService {
 				eventMap.put("meetingDate", document.meetingDate)
 				eventMap.put("documentId", document.id)
 				eventMap.put("documentTitle", document.title)
-				eventMap.put("documentType", document.getClass().name?.replace("com.councilsearch.",""))
+				eventMap.put("documentType", Hibernate.getClass(document).getName()?.replace("com.councilsearch.",""))
 				eventMap.put("alertName", event.match.alert.name)
 				eventMap.put("matchCount", event.match.previews?.size())
 				eventMap.put("commentCount", event.comments?.size())
@@ -73,7 +73,7 @@ class EventService {
 		eventMap.put("meetingDate", document.meetingDate)
 		eventMap.put("documentUUID", document.uuid)
 		eventMap.put("documentTitle", document.title)
-		eventMap.put("documentType", document.getClass().name?.replace("com.councilsearch.",""))
+		eventMap.put("documentType", Hibernate.getClass(document).getName()?.replace("com.councilsearch.",""))
 		eventMap.put("alertName", event.match.alert.name)
 		eventMap.put("regionName", event.match.document.monitor?.region.name)
 		eventMap.put("stateAbbr", event.match.document.monitor?.region.state.abbr?.toUpperCase())
@@ -133,6 +133,7 @@ class EventService {
 		return pMap
 	}
 
+	@Transactional
 	def updateDescription(def eventUUID, def text) throws Exception{
 		Event event = Event.findByUuid(eventUUID)
 
@@ -148,6 +149,7 @@ class EventService {
 
 	}
 
+	@Transactional
 	def createComment(User user, def eventUUID, def text) throws Exception {
 		log.info("Creating Comment for User:${user.id} and Event:${eventUUID} with data:${text}")
 
@@ -212,6 +214,7 @@ class EventService {
 		return members
 	}
 
+	@Transactional
 	def updateOwner(def eventUUID, def ownerId) throws Exception{
 		Event event = Event.findByUuid(eventUUID)
 		User owner = User.get(ownerId)
@@ -232,6 +235,7 @@ class EventService {
 
 	}
 
+	@Transactional
 	def updateStatus(def eventUUID, def status) throws Exception{
 		Event event = Event.findByUuid(eventUUID)
 
@@ -246,6 +250,7 @@ class EventService {
 		}
 	}
 
+	@Transactional
 	def markEmailed(def eventId, Date date) throws Exception{
 		log.info("Marking Event:${eventId} as emailed")
 //		Event event = Event.get(eventId)

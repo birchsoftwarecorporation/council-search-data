@@ -2,6 +2,8 @@ package com.councilsearch.search
 
 import org.apache.solr.client.solrj.SolrQuery
 import org.apache.solr.client.solrj.SolrQuery.ORDER
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class Request {
 	// Query selections
@@ -17,10 +19,10 @@ class Request {
 	List<String> regionIds
 
 	// Date filter
+	LocalDate startDate
+	LocalDate endDate
 	String startDateStr
 	String endDateStr
-	Date startDate
-	Date endDate
 
 	// Sort
 	String sort
@@ -46,39 +48,35 @@ class Request {
 		this.q = phrase
 		this.regionIds = regionIds
 		this.rows = 100
-		this.startDate = new Date() - 30
-		this.endDate = new Date() + 45
+		this.startDate = LocalDate.now().minusDays(30)
+		this.endDate = LocalDate.now().plusDays(45)
 	}
 
 	void setStartDateStr(String dateStr){
 		if(dateStr != null && !"".equalsIgnoreCase(dateStr)){
-			this.startDate = parseDate(dateStr, "yyyy-MM-dd'T'HH:mm:ss")
+			this.startDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE)
 		}
 	}
 
 	void setEndDateStr(String dateStr){
 		if(dateStr != null && !"".equalsIgnoreCase(dateStr)){
-			this.endDate = parseDate(dateStr, "yyyy-MM-dd'T'HH:mm:ss")
+			this.endDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE)
 		}
 	}
 
-	Date parseDate(String dateStr, String format){
-		Date date
-
-		if(dateStr != null && format != null && !"".equals(dateStr) && !"".equals(format)) {
-			try {
-				date = Date.parse(format, dateStr)
-			} catch (Exception e) {
-				// TODO - Add logging to pojo
-				println("Could not parse date:${dateStr} with format: ${format} " + e)
-			}
-		}
-
-		return date
-	}
-
+	/*
+	 * Use [ ] for inclusive ranges
+	 * Use { } for exclusive ranges
+	 * Mix them like [ } | { ]
+	 */
 	String createSolrDateFilter(){
-		return "meeting_date:[${this.startDate.format("yyyy-MM-dd'T'HH:mm:ss'Z'")} TO ${this.endDate.format("yyyy-MM-dd'T'HH:mm:ss'Z'")}]"
+		this.startDateStr = this.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+		this.endDateStr = this.endDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+		// Solr dates are annoying - we only need down to the day, inclusive
+		String meetingDateFilter = "meeting_date:[${this.startDateStr}T00:00:00Z TO ${this.endDateStr}T23:59:59Z]"
+
+		return meetingDateFilter
 	}
 
 	// Search results for the UI

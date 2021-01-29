@@ -82,7 +82,8 @@ hibernate:
 dataSource:
     pooled: true
     jmxExport: true
-    driverClassName: com.mysql.jdbc.Driver
+    driverClassName: 'com.mysql.cj.jdbc.Driver'
+    dialect: org.hibernate.dialect.MySQL8Dialect
     username: ${CS_DB_USER}
     password: ${CS_DB_PASS}
 
