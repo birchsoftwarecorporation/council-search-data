@@ -3,6 +3,9 @@ package com.councilsearch
 import grails.gorm.transactions.NotTransactional
 import groovy.sql.Sql
 
+import java.time.LocalDate
+import java.time.LocalDateTime
+
 class QueryService {
 	def dataSource
 
@@ -93,17 +96,17 @@ class QueryService {
 				INSERT INTO document (monitor_id, class, version, title, date_created, last_updated, 
 									meeting_date_str, meeting_date, url, extracted, indexed, status_code, 
 									content_type, location, hash, uuid, success, message)
-				VALUES(:monitorId, :docType, 1, :title, now(), now(), 
+				VALUES(:monitorId, :documentType, 1, :title, now(), now(), 
 					:dateStr, :meetingDate, :url, true, false, :statusCode, 
 					:contentType, :location, :hash, :uuid, :success, :message);
 			"""
 
 			try{
 				def results = sql.executeInsert(query, [monitorId: docMap.get("monitorId"),
-														docType: docMap.get("docType"),
+														documentType: docMap.get("documentType"),
 														title: docMap.get("title") ?: "No title",
 														dateStr: docMap.get("dateStr"),
-														meetingDate: docMap.get("date"),
+														meetingDate: docMap.get("meetingDate"),
 														url: docMap.get("url"),
 														statusCode: docMap.get("statusCode"),
 														contentType: docMap.get("contentType"),
@@ -119,7 +122,9 @@ class QueryService {
 						def docId = cols.get(0)
 
 						if(docId != null && docId > 0){
-							docMap.put("id", docId)
+							docMap.put("documentId", docId)
+							docMap.put("dateCreated", LocalDate.now())
+
 							String contentQuery = """
 								INSERT into content(version, date_created, last_updated, document_id, text)
 								VALUES(1, now(), now(), :docId, :text);
@@ -186,7 +191,48 @@ class QueryService {
 		return id
 	}
 
-	def getAllSearchDocuments(def offset, def maxRows) {
+	Map getSearchDocument(def docId) {
+		log.info("Getting search docMap for Document Id:${docId}")
+		Sql sql = new Sql(dataSource)
+		Map docMap
+		String query = """
+			SELECT
+				# Document
+				d.id documentId,
+				d.title title,
+				replace(d.class, "com.councilsearch.", "") documentType,
+				d.meeting_date meetingDate,
+				d.date_created dateCreated,
+				d.uuid uuid,
+				# Monitor
+				m.id monitorId,
+				# Region
+				r.id regionId,
+				r.name regionName,
+				replace(r.class, "com.councilsearch.", "") regionType,
+				# State
+				s.name stateName,
+				s.abbr stateAbbr
+			FROM
+				document d
+					left join monitor m on m.id = d.monitor_id
+					left join region r on r.id = m.region_id
+					left join state s on s.id = r.state_id
+			WHERE d.success = true and d.id = :docId
+		"""
+
+		try {
+			docMap = sql.rows(query, [docId: docId])?.get(0)
+		} catch (Exception e) {
+			log.error("Could not query for Search Documents: " + e)
+		} finally {
+			sql.close()
+		}
+
+		return docMap
+	}
+
+	List getAllSearchDocuments(def offset, def maxRows) {
 		log.info("Getting searchable data from database offset:${offset} maxRows:${maxRows}")
 		Sql sql = new Sql(dataSource)
 		List documents = []

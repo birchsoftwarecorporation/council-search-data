@@ -1,22 +1,18 @@
 package com.councilsearch
 
-import com.councilsearch.search.Request
-import com.councilsearch.search.Response
 import grails.gorm.transactions.NotTransactional
-import groovy.sql.Sql
 import org.apache.solr.client.solrj.SolrQuery
 import org.apache.solr.client.solrj.impl.ConcurrentUpdateSolrClient
 import org.apache.solr.client.solrj.impl.HttpSolrClient
 import org.apache.solr.client.solrj.response.QueryResponse
 import org.apache.solr.client.solrj.response.UpdateResponse
 import org.apache.solr.common.SolrInputDocument
-import org.hibernate.Hibernate
 import org.springframework.beans.factory.InitializingBean
 
-class SearchService implements InitializingBean {
-	static transactional = false
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
-	def dataSource
+class SearchService implements InitializingBean {
 
 	def queryService
 
@@ -26,6 +22,7 @@ class SearchService implements InitializingBean {
 	Integer SEARCH_INDEX_BATCH_SIZE
 	HttpSolrClient SOLR_CLIENT_REQUEST
 	ConcurrentUpdateSolrClient SOLR_CLIENT_UPDATE
+	DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
 	public void afterPropertiesSet() throws Exception {
 		SOLR_BASE_URL = CustomConfig.findByName("SOLR_BASE_URL")?.getValue() ?: "http://localhost"
@@ -54,51 +51,31 @@ class SearchService implements InitializingBean {
 		}
 	}
 
+
 	@NotTransactional
-	def update(def id){
-		log.info("Updating search index for Document:${id}")
+	def update(def docId){
+		log.info("Updating search index for Document:${docId}")
 		UpdateResponse ur
 
-		if(!id){
+		if(!docId){
 			log.error("Can't update search index for Document with no Id")
 			return ur
 		}
 
-		Document doc = Document.get(id)
-
-		if(!doc){
-			log.error("Can't update search index with Document:${id}")
-			return ur
-		}
+		Map docMap = queryService.getSearchDocument(docId)
 
 		try{
-			SolrInputDocument sDoc = new SolrInputDocument()
-
-			sDoc.addField("id", doc.id)
-			sDoc.addField("state", doc.monitor.region.state.name)
-			sDoc.addField("region_id", doc.monitor.region.id)
-			sDoc.addField("region", doc.monitor.region.name)
-			sDoc.addField("region_type", Hibernate.getClass(doc.monitor.region).getName()?.replace("com.councilsearch.", "").toLowerCase())
-			sDoc.addField("monitor_id", doc.monitor.id)
-			sDoc.addField("title", doc.title)
-			sDoc.addField("document_type", Hibernate.getClass(doc).getName()?.replace("com.councilsearch.","").toLowerCase())
-			sDoc.addField("meeting_date", doc.meetingDate)
-			sDoc.addField("date_created", doc.dateCreated)
-			sDoc.addField("uuid", doc.uuid)
-			sDoc.addField("content", doc.content.text ?: "")
-
-			ur = SOLR_CLIENT_UPDATE.add(SOLR_CLUSTER_NAME, sDoc)
-
-			// Indexed documents must be committed
+			solrAddDocument(docMap)
 			SOLR_CLIENT_UPDATE.commit(SOLR_CLUSTER_NAME)
 		}catch(Exception e){
-			log.error("Could not perform update id:${id} - "+e)
+			log.error("Could not perform update id:${docId} - "+e)
 		}
 
 		return ur
 	}
 
-	def update(){
+	@NotTransactional
+	def index(){
 		log.info("Fully updating Solr Index")
 		int offset = 0
 		def maxId = queryService.getMaxDocumentId()
@@ -134,11 +111,39 @@ class SearchService implements InitializingBean {
 		log.info("Finished fully updating Solr Index")
 	}
 
-	def solrAddDocument(Map docMap){
-		def docId = docMap.get("documentId")
+	@NotTransactional
+	def etlIndex(List docMaps){
+		Iterator<Map> dataItr = docMaps.iterator()
 
-		// Running into MySQL OutOfMemory Exception dont know how
-		String text = queryService.getContentByDocId(docId)
+		while(dataItr.hasNext()) {
+			Map docMap = dataItr.next()
+
+			// Dont upload to Solr if the processing didnt end with a success
+			if(!docMap.get("success")){
+				continue
+			}
+			// Add the doc to index queue
+			solrAddDocument(docMap)
+		}
+
+		// Indexed documents must be committed
+		SOLR_CLIENT_UPDATE.commit(SOLR_CLUSTER_NAME)
+	}
+
+	@NotTransactional
+	def solrAddDocument(Map docMap) {
+		String docId = docMap.get("documentId")
+		String content
+
+		// Data for this can come from ETL or DB if ETL we dont need to do the DB called should exist
+		if (docMap.containsKey("content")) {
+			content = docMap.get("content") ?: ""
+		}else{
+			content = queryService.getContentByDocId(docId) ?: ""
+		}
+
+		// TODO - Flip to debug
+		log.info("Adding Document:${docId} to Solr Index")
 
 		try{
 			SolrInputDocument sDoc = new SolrInputDocument()
@@ -152,18 +157,18 @@ class SearchService implements InitializingBean {
 			sDoc.addField("monitor_id", docMap.get("monitorId"))
 			sDoc.addField("title", docMap.get("title") ?: "No Title")
 			sDoc.addField("document_type", docMap.get("documentType").replace("com.councilsearch.",""))
-			sDoc.addField("meeting_date", docMap.get("meetingDate"))
-			sDoc.addField("date_created", docMap.get("dateCreated"))
+			sDoc.addField("meeting_date", DATE_FORMATTER.format(docMap.get("meetingDate")))
+			sDoc.addField("date_created", DATE_FORMATTER.format(docMap.get("dateCreated")))
 			sDoc.addField("uuid", docMap.get("uuid"))
-			sDoc.addField("content", text)
+			sDoc.addField("content", content)
 
 			SOLR_CLIENT_UPDATE.add(SOLR_CLUSTER_NAME, sDoc)
 		}catch(Exception e){
-			log.error("Could not perform Solr update for batch "+e)
+			log.error("Could not add Document:${docId} to Solr "+e)
 		}
 	}
 
-
+	@NotTransactional
 	def delete(String id){
 		UpdateResponse ur
 
@@ -184,49 +189,7 @@ class SearchService implements InitializingBean {
 		return ur
 	}
 
-	def bulkIndex(List docMaps){
-		Iterator<Map> dItr = docMaps.iterator()
-
-		while(dItr.hasNext()) {
-			Map docMap = dItr.next()
-
-			// Dont upload to Solr if the processing didnt end with a success
-			if(!docMap.get("success")){
-				continue
-			}
-
-			try{
-				def id = docMap.get("id") // mandatory solr field
-				if(id != null){
-					SolrInputDocument sDoc = new SolrInputDocument()
-					sDoc.addField("id", id)
-					sDoc.addField("state", docMap.get("stateName"))
-					sDoc.addField("state_abbr", docMap.get("stateAbbr"))
-					sDoc.addField("region_id", docMap.get("regionId"))
-					sDoc.addField("region", docMap.get("regionName"))
-					sDoc.addField("region_type", docMap.get("regionType"))
-					sDoc.addField("monitor_id", docMap.get("monitorId"))
-					sDoc.addField("title", docMap.get("title") ?: "No Title")
-					sDoc.addField("document_type", docMap.get("docType").replace("com.councilsearch.",""))
-					sDoc.addField("meeting_date", docMap.get("date"))
-					sDoc.addField("uuid", docMap.get("uuid"))
-					sDoc.addField("date_created", new Date())
-					sDoc.addField("content", docMap.get("content") ?: "")
-
-					SOLR_CLIENT_UPDATE.add(SOLR_CLUSTER_NAME, sDoc)
-				}else{
-					log.error("Cannot update Solr index with null Id")
-				}
-			}catch(Exception e){
-				log.error("Could not bulk ETL index: "+e)
-			}
-		}
-
-		// Indexed documents must be committed
-		SOLR_CLIENT_UPDATE.commit(SOLR_CLUSTER_NAME)
-	}
-
-
+	@NotTransactional
 	QueryResponse request(SolrQuery solrQuery){
 		QueryResponse queryResponse
 

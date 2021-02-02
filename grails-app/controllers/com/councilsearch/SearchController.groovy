@@ -43,7 +43,7 @@ class SearchController {
 			render ([status: "Updated Document:${id}"] as JSON)
 			return
 		}else{
-			searchService.update()
+			searchService.index()
 			render ([status: "Updated all documents"] as JSON)
 			return
 		}

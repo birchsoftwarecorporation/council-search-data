@@ -28,6 +28,8 @@ import org.springframework.beans.factory.InitializingBean
 import org.jsoup.Jsoup
 import java.text.DateFormat
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.regex.Matcher
 
 class ExtractTransferLoadService implements InitializingBean {
@@ -118,12 +120,12 @@ class ExtractTransferLoadService implements InitializingBean {
 					extractDocuments(docPayloadsBatch)
 					generateHash(docPayloadsBatch)
 					generateUUID(docPayloadsBatch)
-					extractDate(docPayloadsBatch)
+					extractMeetingDate(docPayloadsBatch)
 					// removePhrases() // Things like "tune into Cox channel 9"
 					queryService.createDocuments(docPayloadsBatch)
 					brandPDF(docPayloadsBatch)
 					amazonWebService.uploadDocuments(docPayloadsBatch)
-					searchService.bulkIndex(docPayloadsBatch)
+					searchService.etlIndex(docPayloadsBatch)
 					cleanPayloads(docPayloadsBatch)
 				}
 			}
@@ -136,7 +138,7 @@ class ExtractTransferLoadService implements InitializingBean {
 	def processMonitor(Map monitor){
 		boolean textDedup = monitor.hashDedup ?: false
 		log.info "Gathering Monitor:${monitor.monitorId} data from import.io"
-		List docMaps = getImportData(monitor).take(10)
+		List docMaps = getImportData(monitor)
 
 		log.info "Monitor:${monitor.monitorId} found ${docMaps?.size()} documents"
 
@@ -214,7 +216,7 @@ class ExtractTransferLoadService implements InitializingBean {
 					docMap.put("sslVersion", monitor.sslVersion)
 					docMap.put("userAgent", monitor.userAgent)
 					docMap.put("cookie", monitor.cookie)
-					docMap.put("docType", "com.councilsearch.Agenda")
+					docMap.put("documentType", "com.councilsearch.Agenda")
 					docMaps.add(docMap)
 				}else{ // No content grab the links for processing
 					group.agendas.each { agenda ->
@@ -228,7 +230,7 @@ class ExtractTransferLoadService implements InitializingBean {
 						docMap.put("sslVersion", monitor.sslVersion)
 						docMap.put("userAgent", monitor.userAgent)
 						docMap.put("cookie", monitor.cookie)
-						docMap.put("docType", "com.councilsearch.Agenda")
+						docMap.put("documentType", "com.councilsearch.Agenda")
 
 						def url = findImportioUrl(agenda.href, agenda.text)
 
@@ -253,7 +255,7 @@ class ExtractTransferLoadService implements InitializingBean {
 					docMap.put("sslVersion", monitor.sslVersion)
 					docMap.put("userAgent", monitor.userAgent)
 					docMap.put("cookie", monitor.cookie)
-					docMap.put("docType", "com.councilsearch.AgendaSupplement")
+					docMap.put("documentType", "com.councilsearch.AgendaSupplement")
 
 					def url = findImportioUrl(agendaSup.href, agendaSup.text)
 
@@ -278,7 +280,7 @@ class ExtractTransferLoadService implements InitializingBean {
 					docMap.put("userAgent", monitor.userAgent)
 					docMap.put("cookie", monitor.cookie)
 					docMap.put("content", mContent)
-					docMap.put("docType", "com.councilsearch.Minute")
+					docMap.put("documentType", "com.councilsearch.Minute")
 				}else{ // No content grab the links for processing
 					group.minutes.each { minute ->
 						Map docMap = [:]
@@ -291,7 +293,7 @@ class ExtractTransferLoadService implements InitializingBean {
 						docMap.put("sslVersion", monitor.sslVersion)
 						docMap.put("userAgent", monitor.userAgent)
 						docMap.put("cookie", monitor.cookie)
-						docMap.put("docType", "com.councilsearch.Minute")
+						docMap.put("documentType", "com.councilsearch.Minute")
 
 						def url = findImportioUrl(minute.href, minute.text)
 
@@ -313,7 +315,7 @@ class ExtractTransferLoadService implements InitializingBean {
 					docMap.put("sslVersion", monitor.sslVersion)
 					docMap.put("userAgent", monitor.userAgent)
 					docMap.put("cookie", monitor.cookie)
-					docMap.put("docType", "com.councilsearch.MinuteSupplement")
+					docMap.put("documentType", "com.councilsearch.MinuteSupplement")
 
 					def url = findImportioUrl(minuteSup.href, minuteSup.text)
 
@@ -617,17 +619,17 @@ class ExtractTransferLoadService implements InitializingBean {
 		return text?.replaceAll("\\<.*?\\>", " ");
 	}
 
-	def extractDate(List<Map> payloads){
-		Date date
-		Iterator<Map> dItr = payloads.iterator()
+	def extractMeetingDate(List<Map> docMaps){
+		LocalDate meetingDate
+		Iterator<Map> docMapsItr = docMaps.iterator()
 
-		while(dItr.hasNext()) {
-			Map payload = dItr.next()
-			String dateStr = payload.get("dateStr")
+		while(docMapsItr.hasNext()) {
+			Map docMap = docMapsItr.next()
+			String dateStr = docMap.get("dateStr")
 
 			// If the dateStr is empty grab some content
 			if(dateStr == null || "".equals(dateStr.trim())){
-				dateStr = payload.get("content")?.take(500) ?: ""
+				dateStr = docMap.get("content")?.take(500) ?: ""
 			}
 
 			// Clean some characters
@@ -644,47 +646,48 @@ class ExtractTransferLoadService implements InitializingBean {
 				// MM dd yyyy
 				case ~/.*(\b\d{1,2}\s+\d{1,2}\s+\d{4}).*/:
 					Matcher m = Matcher.lastMatcher
-					date = stringToDate("MM dd yyyy", m.group(1))
+					meetingDate = stringToDate("M d yyyy", m.group(1))
 					break;
 				// yyyy MM dd
 				case ~/.*(\b\d{4}\s+\d{1,2}\s+\d{1,2}\b).*/:
 					Matcher m = Matcher.lastMatcher
-					date = stringToDate("yyyy MM dd", m.group(1))
+					meetingDate = stringToDate("yyyy M d", m.group(1))
 					break;
 				// MMM dd yyyy
 				case ~/.*(\b\w+\s+\d{1,2}\s+\d{4}).*/:
 					Matcher m = Matcher.lastMatcher
-					date = stringToDate("MMM dd yyyy", m.group(1))
+					meetingDate = stringToDate("M d yyyy", m.group(1))
 					break;
 				// MM dd yy
 				case ~/.*(\b\d{1,2}\s+\d{1,2}\s+\d{2}).*/:
 					Matcher m = Matcher.lastMatcher
-					date = stringToDate("MM dd yy", m.group(1))
+					meetingDate = stringToDate("M d yy", m.group(1))
 					break;
 				// MMddyyyy
 				case ~/.*(\b\d{8}).*/:
 					Matcher m = Matcher.lastMatcher
-					date = stringToDate("MMddyyyy", m.group(1))
-					break;
-				default:
-					log.warn("Could not process date from string: ${dateStr}")
-					payload.put("message", "Could not process date from string: ${dateStr}")
-					payload.put("success", false)
+					meetingDate = stringToDate("MMddyyyy", m.group(1))
 					break;
 			}
 
-			payload.put("date", date)
+			if(meetingDate != null){
+				docMap.put("meetingDate", meetingDate)
+			}else{ // Documents no good if we dont have a meeting
+				log.error("Unsupported date type. Could not process date from string: ${dateStr}")
+				docMap.put("message", "Unsupported date type. Could not process date from string: ${dateStr}")
+				docMap.put("success", false)
+			}
 		}
-
 	}
 
-	Date stringToDate(String format, String dateStr){
-		Date date
-		DateFormat df = new SimpleDateFormat(format, Locale.ENGLISH);
+	LocalDate stringToDate(String format, String dateStr){
+		LocalDate date
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format)
+
 		try {
-			date = df.parse(dateStr)
+			date = LocalDate.parse(dateStr, formatter)
 		}catch (Exception e) {
-			log.debug("Could not parse date: "+e.getMessage())
+			log.error("Could not parse date: ${dateStr} format:${format} "+e.getMessage())
 		}
 
 		return date
