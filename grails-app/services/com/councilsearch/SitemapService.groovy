@@ -80,12 +80,11 @@ class SitemapService implements InitializingBean {
 
 	def generateStaticSiteMap(File siteMapDir, List staticPages){
 		log.info("Creating static sitemap")
-
+		LocalDate today = LocalDate.now()
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+		String todayStr = formatter.format(today)
 		String fileNamePrefix = "sitemap-static"
 		String sitemapFileName = fileNamePrefix+".xml.gz"
-		Date today = Calendar.getInstance().getTime()
-		DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd")
-		String todayStr = dateFormat.format(today)
 
 		WebSitemapGenerator wsg = WebSitemapGenerator.builder(SITEMAP_BASE_URL, siteMapDir)
 				.fileNamePrefix(fileNamePrefix)
@@ -163,8 +162,8 @@ class SitemapService implements InitializingBean {
 				def uuid = sMap[5]
 
 				// Create the dates
-				LocalDate dateCreated = LocalDate.parse(dateCreatedStr, MYSQL_DATE_FORMAT)
-				LocalDate meetingDate = LocalDate.parse(meetingDateStr, MYSQL_DATE_FORMAT)
+//				LocalDate dateCreated = LocalDate.parse(dateCreatedStr, MYSQL_DATE_FORMAT)
+//				LocalDate meetingDate = LocalDate.parse(meetingDateStr, MYSQL_DATE_FORMAT)
 
 				String url = "${SITEMAP_BASE_URL}/document/${uuid}"
 

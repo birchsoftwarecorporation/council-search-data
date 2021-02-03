@@ -142,8 +142,7 @@ class SearchService implements InitializingBean {
 			content = queryService.getContentByDocId(docId) ?: ""
 		}
 
-		// TODO - Flip to debug
-		log.info("Adding Document:${docId} to Solr Index")
+		log.debug("Adding Document:${docId} to Solr Index")
 
 		try{
 			SolrInputDocument sDoc = new SolrInputDocument()
