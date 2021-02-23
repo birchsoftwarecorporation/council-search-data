@@ -142,10 +142,13 @@ class SearchService implements InitializingBean {
 			content = queryService.getContentByDocId(docId) ?: ""
 		}
 
+
+
 		log.debug("Adding Document:${docId} to Solr Index")
 
 		try{
 			SolrInputDocument sDoc = new SolrInputDocument()
+			def meetingDate = docMap.get("meetingDate")
 
 			sDoc.addField("id", docId)
 			sDoc.addField("state", docMap.get("stateName"))
@@ -156,7 +159,9 @@ class SearchService implements InitializingBean {
 			sDoc.addField("monitor_id", docMap.get("monitorId"))
 			sDoc.addField("title", docMap.get("title") ?: "No Title")
 			sDoc.addField("document_type", docMap.get("documentType").replace("com.councilsearch.",""))
-			sDoc.addField("meeting_date", DATE_FORMATTER.format(docMap.get("meetingDate")))
+			if(meetingDate != null){
+				sDoc.addField("meeting_date", DATE_FORMATTER.format(meetingDate))
+			}
 			sDoc.addField("date_created", DATE_FORMATTER.format(docMap.get("dateCreated")))
 			sDoc.addField("uuid", docMap.get("uuid"))
 			sDoc.addField("content", content)
