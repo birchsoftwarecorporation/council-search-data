@@ -30,6 +30,7 @@ import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
 import java.util.regex.Matcher
 
 class ExtractTransferLoadService implements InitializingBean {
@@ -123,10 +124,10 @@ class ExtractTransferLoadService implements InitializingBean {
 					extractMeetingDate(docPayloadsBatch)
 					// removePhrases() // Things like "tune into Cox channel 9"
 					queryService.createDocuments(docPayloadsBatch)
-					brandPDF(docPayloadsBatch)
-					amazonWebService.uploadDocuments(docPayloadsBatch)
-					searchService.etlIndex(docPayloadsBatch)
-					cleanPayloads(docPayloadsBatch)
+//					brandPDF(docPayloadsBatch)
+//					amazonWebService.uploadDocuments(docPayloadsBatch)
+//					searchService.etlIndex(docPayloadsBatch)
+//					cleanPayloads(docPayloadsBatch)
 				}
 			}
 		}
@@ -637,36 +638,43 @@ class ExtractTransferLoadService implements InitializingBean {
 								.replaceAll("\n", " ")
 								.replaceAll(",", " ")
 								.replaceAll("/", " ")
-								.replaceAll("/", " ")
 								.replaceAll("-", " ")
 								.replaceAll("_", " ")
 								.replaceAll("\\.", " ")
+								.replaceAll("\\|", " ")
+								.replaceAll("\\s+", " ")
+								.trim()
 
 			switch(dateStr) {
-				// MM dd yyyy
+				// M d yyyy - Ex: 03 4 2020
 				case ~/.*(\b\d{1,2}\s+\d{1,2}\s+\d{4}).*/:
 					Matcher m = Matcher.lastMatcher
-					meetingDate = stringToDate("M d yyyy", m.group(1))
+					meetingDate = stringToDate(m.group(1), "M d yyyy")
 					break;
-				// yyyy MM dd
-				case ~/.*(\b\d{4}\s+\d{1,2}\s+\d{1,2}\b).*/:
+				// MMMM d yyyy - Ex: January 6 2020
+				case ~/.*(\b\w{4,}\s+\d{1,2}\s+\d{4}).*/:
 					Matcher m = Matcher.lastMatcher
-					meetingDate = stringToDate("yyyy M d", m.group(1))
+					meetingDate = stringToDate(m.group(1), "MMMM d yyyy")
 					break;
-				// MMM dd yyyy
-				case ~/.*(\b\w+\s+\d{1,2}\s+\d{4}).*/:
+				// MMM d yyyy - Ex: Jan 20 2020
+				case ~/.*(\b\w{3,}\s+\d{1,2}\s+\d{4}).*/:
 					Matcher m = Matcher.lastMatcher
-					meetingDate = stringToDate("M d yyyy", m.group(1))
+					meetingDate = stringToDate(m.group(1), "MMM d yyyy")
 					break;
-				// MM dd yy
+				//	M d yy - Ex: 02/23/21
 				case ~/.*(\b\d{1,2}\s+\d{1,2}\s+\d{2}).*/:
 					Matcher m = Matcher.lastMatcher
-					meetingDate = stringToDate("M d yy", m.group(1))
+					meetingDate = stringToDate(m.group(1), "M d yy")
+					break;
+				// yyyy M d
+				case ~/.*(\b\d{4}\s+\d{1,2}\s+\d{1,2}\b).*/:
+					Matcher m = Matcher.lastMatcher
+					meetingDate = stringToDate(m.group(1), "yyyy M d")
 					break;
 				// MMddyyyy
 				case ~/.*(\b\d{8}).*/:
 					Matcher m = Matcher.lastMatcher
-					meetingDate = stringToDate("MMddyyyy", m.group(1))
+					meetingDate = stringToDate(m.group(1), "MMddyyyy")
 					break;
 			}
 
@@ -674,15 +682,15 @@ class ExtractTransferLoadService implements InitializingBean {
 				docMap.put("meetingDate", meetingDate)
 			}else{ // Documents no good if we dont have a meeting
 				log.error("Unsupported date type. Could not process date from string: ${dateStr}")
-				docMap.put("message", "Unsupported date type. Could not process date from string: ${dateStr}")
+				docMap.put("message", "Unsupported date type. Could not process date from string")
 				docMap.put("success", false)
 			}
 		}
 	}
 
-	LocalDate stringToDate(String format, String dateStr){
+	LocalDate stringToDate(String dateStr, String format){
 		LocalDate date
-		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format)
+		DateTimeFormatter formatter = new DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern(format).toFormatter(Locale.ENGLISH)
 
 		try {
 			date = LocalDate.parse(dateStr, formatter)

@@ -27,9 +27,10 @@ class UrlMappings {
 
 		// Documents
 		get "/api/document/$uuid" (controller:"document", action:"show")
-		get "/api/guest/document/rextract/$uuid" (controller:"document", action:"reExtract")
+		get "/api/guest/document/reExtractContent/$uuid" (controller:"document", action:"reExtract")
 		get "/api/guest/document/$uuid" (controller:"document", action:"show")
 		get "/api/guest/s3/download/$uuid" (controller:"document", action:"download")
+		get "/api/guest/document/reExtractDate" (controller: "document" , action: "reExtractDate")
 
 		// ETL
 		get "/api/guest/etl/start/$monitorId?" (controller:"extractTransferLoad", action:"start")
@@ -48,6 +49,9 @@ class UrlMappings {
 
 		// Leads
 		post "/api/guest/contact" (controller:"message", action:"save")
+
+		// Match
+		get "/api/guest/match/${state}/${template}/${count}" (controller:"match", action:"list")
 
 		// Monitor
 		get "/api/regions/$regionId/monitors" (controller:"monitor", action:"index")

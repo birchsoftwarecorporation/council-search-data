@@ -107,7 +107,7 @@ class DocumentController {
 		render "delete"
 	}
 
-	def reExtract(){
+	def reExtractContent(){
 		def uuid = params.uuid
 		log.info("ReExtract Document:${uuid}")
 
@@ -123,4 +123,9 @@ class DocumentController {
 		render "ReExtracted document with UUID:${uuid}"
 	}
 
+	def reExtractDate(){
+		documentService.reExtractDate()
+
+		render "ReExtracted Dates"
+	}
 }
