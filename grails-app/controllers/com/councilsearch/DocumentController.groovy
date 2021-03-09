@@ -38,7 +38,7 @@ class DocumentController {
 		docMap.put("documentType", document.getClass().name?.replace("com.councilsearch.","").capitalize())
 		docMap.put("title", document.title)
 		docMap.put("url", document.url)
-		docMap.put("content", document.content.text?.replaceAll("\\n","<br>"))
+		docMap.put("content", document.content.text ?: "")
 
 		render docMap as JSON
 	}
