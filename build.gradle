@@ -62,6 +62,9 @@ dependencies {
 	// Spring Security
 	compile 'org.grails.plugins:spring-security-core:4.0.3'
 	compile "org.grails.plugins:spring-security-rest:3.0.0.RC1"
+	// Grails Async
+//	compile group: 'org.grails.plugins', name: 'async', version: '4.0.0'
+//	compile "org.grails:grails-datastore-gorm-async"
 	// Default Grails
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
     compile "org.springframework.boot:spring-boot-starter-logging"

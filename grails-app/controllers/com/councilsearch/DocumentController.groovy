@@ -5,6 +5,7 @@ import grails.converters.JSON
 class DocumentController {
 	def amazonWebService
 	def documentService
+	def activityService
 
 	def show(){
 		def uuid = params.uuid
@@ -16,6 +17,9 @@ class DocumentController {
 			render ([error: "No UUID specified"] as JSON)
 			return
 		}
+
+		// Record the activity
+		activityService.create("document-show", uuid, request.getHeader("X-Real-IP"))
 
 		Document document = Document.findByUuid(uuid)
 
@@ -66,6 +70,9 @@ class DocumentController {
 			render ([error: "No UUID specified"] as JSON)
 			return
 		}
+
+		// Record the activity
+		activityService.create("document-download", uuid, request.getHeader("X-Real-IP"))
 
 		Document document = Document.findByUuid(uuid)
 

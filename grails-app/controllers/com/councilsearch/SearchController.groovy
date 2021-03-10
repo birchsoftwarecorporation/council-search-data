@@ -9,6 +9,7 @@ import org.apache.solr.client.solrj.response.UpdateResponse
 class SearchController {
 	def searchService
 	def queryService
+	def activityService
 
     def request() {
 		def sReqJson = request.JSON
@@ -18,8 +19,7 @@ class SearchController {
 		log.info("Requesting Search results for JSON: ${sReqJson}")
 
 		// Record the activity
-//		Activity activity = new Activity(name: "search", details: sReqJson.toString(), ipAddress: request.getRemoteAddr())
-//		activity.save()
+		activityService.create("search", sReqJson.toString(), request.getHeader("X-Real-IP"))
 
 		try{
 			searchRequest = new Request(sReqJson)
@@ -64,6 +64,10 @@ class SearchController {
 
 	def suggest(){
 		def word = params.word
+
+		// Record the activity
+		activityService.create("suggest", word, request.getHeader("X-Real-IP"))
+
 		Integer count = params.count?.toInteger() ?: 10
 		List suggestions = queryService.suggestions(word)
 
