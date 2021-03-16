@@ -124,10 +124,10 @@ class ExtractTransferLoadService implements InitializingBean {
 					extractMeetingDate(docPayloadsBatch)
 					// removePhrases() // Things like "tune into Cox channel 9"
 					queryService.createDocuments(docPayloadsBatch)
-//					brandPDF(docPayloadsBatch)
-//					amazonWebService.uploadDocuments(docPayloadsBatch)
-//					searchService.etlIndex(docPayloadsBatch)
-//					cleanPayloads(docPayloadsBatch)
+					brandPDF(docPayloadsBatch)
+					amazonWebService.uploadDocuments(docPayloadsBatch)
+					searchService.etlIndex(docPayloadsBatch)
+					cleanPayloads(docPayloadsBatch)
 				}
 			}
 		}
