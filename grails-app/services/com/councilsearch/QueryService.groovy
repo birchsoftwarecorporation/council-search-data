@@ -594,4 +594,29 @@ class QueryService {
 
 		return events
 	}
+
+	// TODO - For redownload bug delete after completed
+	def getDocumentIds(){
+		log.info("Getting document ids whose files may not have been saved")
+		Sql sql = new Sql(dataSource)
+		List ids = []
+		String query = """
+			select id from document
+			where date_created > "2021-02-2 00:00:00" and success = 1
+			order by id desc
+		"""
+
+		try {
+			// Grab the events the user owns
+			sql.rows(query).each {
+				ids.push(it.get("id"))
+			}
+		} catch (Exception e) {
+			log.error("Could not query for documentIds" + e)
+		} finally {
+			sql.close()
+		}
+
+		return ids
+	}
 }

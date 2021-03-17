@@ -31,6 +31,7 @@ class UrlMappings {
 		get "/api/guest/document/$uuid" (controller:"document", action:"show")
 		get "/api/guest/s3/download/$uuid" (controller:"document", action:"download")
 		get "/api/guest/document/reExtractDate" (controller: "document" , action: "reExtractDate")
+		get "/api/guest/document/reDownloadToS3/$uuid" (controller: "document" , action: "reDownloadToS3")
 
 		// ETL
 		get "/api/guest/etl/start/$monitorId?" (controller:"extractTransferLoad", action:"start")

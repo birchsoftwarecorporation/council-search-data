@@ -106,6 +106,10 @@ class AmazonWebService implements InitializingBean {
 		S3_CLIENT.deleteObject(new DeleteObjectRequest(S3_BUCKET, S3_DOCUMENTS_FOLDER+"/"+id))
 	}
 
+	Boolean s3ObjectExists(def uuid) throws Exception{
+		return S3_CLIENT.doesObjectExist(S3_BUCKET, S3_DOCUMENTS_FOLDER+"/"+uuid)
+	}
+
 	boolean email(def toAddress, def bccAddress, def fromAddress, def subject, def content) throws Exception{
 		try {
 			// Build the 'to'

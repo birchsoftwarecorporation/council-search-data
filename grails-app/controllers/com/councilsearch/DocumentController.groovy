@@ -135,4 +135,19 @@ class DocumentController {
 
 		render "ReExtracted Dates"
 	}
+
+	def reDownloadToS3(){
+		def uuid = params.uuid
+		log.info("ReExtract Document:${uuid}")
+
+		if(!uuid){
+			response.status = 400
+			log.error("No UUID specified")
+			render ([error: "No UUID specified"] as JSON)
+			return
+		}
+
+		documentService.reDownloadToS3(uuid)
+		render "reDownloadToS3"
+	}
 }
