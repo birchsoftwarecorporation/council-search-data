@@ -13,6 +13,7 @@ grails.plugin.springsecurity.rest.token.storage.jwt.secret='fuckinsecretkeylkjsa
 grails.plugin.springsecurity.providerNames=[ 'daoAuthenticationProvider','anonymousAuthenticationProvider']
 grails.plugin.springsecurity.userLookup.userDomainClassName = 'com.councilsearch.User'
 grails.plugin.springsecurity.userLookup.authorityJoinClassName = 'com.councilsearch.UserRole'
+grails.plugin.springsecurity.userLookup.usernameIgnoreCase = 'true'
 grails.plugin.springsecurity.authority.className = 'com.councilsearch.Role'
 grails.plugin.springsecurity.securityConfigType = 'InterceptUrlMap'
 

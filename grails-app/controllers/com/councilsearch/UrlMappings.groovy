@@ -49,7 +49,7 @@ class UrlMappings {
 		get "/api/event/$uuid/members" (controller:"event", action:"members")
 
 		// Leads
-		post "/api/guest/contact" (controller:"message", action:"save")
+		post "/api/guest/lead" (controller:"lead", action:"save")
 
 		// Match
 		get "/api/guest/match/${state}/${template}/${count}" (controller:"match", action:"list")
