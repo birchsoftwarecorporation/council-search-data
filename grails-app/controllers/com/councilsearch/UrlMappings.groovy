@@ -13,6 +13,9 @@ class UrlMappings {
 //        put "/$controller/$id(.$format)?"(action:"update")
 //        patch "/$controller/$id(.$format)?"(action:"patch")
 
+		// Activity
+		post "/api/guest/activity" (controller:"activity", action:"save")
+
 		// Alert
 		get "/api/alert" (controller:"alert", action:"list")
 		get "/api/alert/$id" (controller:"alert", action:"show")

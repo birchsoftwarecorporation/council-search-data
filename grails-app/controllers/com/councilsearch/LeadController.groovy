@@ -16,14 +16,14 @@ class LeadController {
 		if(leadJSON == null){
 			response.status = 400
 			log.error "Unable to save lead with no data."
-			render ([error: "Unable to save lead: "+ lead.errors] as JSON)
+			render ([error: "Unable to save lead"] as JSON)
 		}
 
 		try{
 			lead = leadService.save(leadJSON)
 		}catch(Exception e){
 			response.status = 500
-			render ([error: "Unable to save lead!"] as JSON)
+			render ([error: "Unable to save lead"] as JSON)
 		}
 
 		render lead as JSON

@@ -32,7 +32,6 @@ class SitemapService implements InitializingBean {
 	boolean create(){
 		Sql sql = new Sql(dataSource)
 		boolean success = true
-		String yearAgoStr = LocalDate.now().minusYears(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 		List<String> siteMapFileNames = []
 		List<String> staticSites = ["", "search", "contact"]
 		File sitemapDir = new File(SITEMAP_DIR)
@@ -42,7 +41,7 @@ class SitemapService implements InitializingBean {
 			return false
 		}
 
-		log.info("Finding sitemap documents newer than: ${yearAgoStr}")
+		log.info("Finding sitemap documents newer than: 2020-01-01")
 
 		// Generate the master file (default pages home/contact/search
 		siteMapFileNames.add(generateStaticSiteMap(sitemapDir, staticSites))
@@ -63,7 +62,7 @@ class SitemapService implements InitializingBean {
 			def monitorId = mMap[0]
 
 			// Grab this monitors document data
-			List sMapInfo = queryService.getSitemapInfo(sql, monitorId, yearAgoStr)
+			List sMapInfo = queryService.getSitemapInfo(sql, monitorId)
 
 			// Generate the Sitemap file
 			String siteMapFileName = generateSiteMap(monitorId, sitemapDir, sMapInfo)
@@ -105,7 +104,7 @@ class SitemapService implements InitializingBean {
 				// Create the entry
 				WebSitemapUrl wsu = new WebSitemapUrl.Options(url)
 						.lastMod(todayStr)
-						.priority(1.0) // default
+						.priority(0.8) // default
 						.changeFreq(ChangeFreq.DAILY)
 						.build()
 				wsg.addUrl(wsu)
@@ -129,9 +128,9 @@ class SitemapService implements InitializingBean {
 		int urlCnt = 0
 		String fileNamePrefix = "sitemap-${monitorId}"
 		String sitemapFileName = fileNamePrefix+".xml.gz"
-		Date today = Calendar.getInstance().getTime()
-		DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd")
-		String todayStr = dateFormat.format(today)
+//		Date today = Calendar.getInstance().getTime()
+//		DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd")
+//		String todayStr = dateFormat.format(today)
 
 		log.info("Creating for Monitor:${monitorId} with ${sMapInfo.size()} items")
 
@@ -162,17 +161,15 @@ class SitemapService implements InitializingBean {
 				def uuid = sMap[5]
 
 				// Create the dates
-//				LocalDate dateCreated = LocalDate.parse(dateCreatedStr, MYSQL_DATE_FORMAT)
-//				LocalDate meetingDate = LocalDate.parse(meetingDateStr, MYSQL_DATE_FORMAT)
+				LocalDate dateCreated = LocalDate.parse(dateCreatedStr, MYSQL_DATE_FORMAT)
 
 				String url = "${SITEMAP_BASE_URL}/document/${uuid}"
 
 				// Create the entry
 				WebSitemapUrl wsu = new WebSitemapUrl.Options(url)
-//						.lastMod(dateCreated.format(SITEMAP_DATE_FORMAT))
-						.lastMod(todayStr)
-						.priority(0.75) // default
-						.changeFreq(ChangeFreq.DAILY)
+						.lastMod(dateCreated.format(SITEMAP_DATE_FORMAT))
+						.priority(0.6) // default
+						.changeFreq(ChangeFreq.MONTHLY)
 						.build()
 				wsg.addUrl(wsu)
 				urlCnt++

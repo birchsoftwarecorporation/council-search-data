@@ -1,6 +1,5 @@
 package com.councilsearch
 
-import grails.converters.JSON
 import grails.gorm.transactions.Transactional
 
 @Transactional
