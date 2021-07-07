@@ -33,6 +33,10 @@ configurations {
 }
 
 dependencies {
+	// HTML Unit
+	compile('net.sourceforge.htmlunit:htmlunit:2.50.0')
+	// HTML Unit dependecy conflict
+	compile(group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0')
 	// Sitemap Generator
 	compile group: 'com.github.dfabulich', name: 'sitemapgen4j', version: '1.1.2'
 	// Google Search Console API
@@ -74,7 +78,10 @@ dependencies {
 	// Provided in prod - compile in runapp
 	provided "org.springframework.boot:spring-boot-starter-tomcat"
     compile "org.grails:grails-plugin-url-mappings"
-    compile "org.grails:grails-plugin-rest"
+    compile ("org.grails:grails-plugin-rest")
+	{
+		exclude group: 'org.apache.commons', module: 'commons-lang3'
+	}
     compile "org.grails:grails-plugin-codecs"
     compile "org.grails:grails-plugin-interceptors"
     compile "org.grails:grails-plugin-services"
@@ -82,7 +89,10 @@ dependencies {
     compile "org.grails:grails-plugin-databinding"
     compile "org.grails:grails-web-boot"
     compile "org.grails:grails-logging"
-    compile "org.grails.plugins:cache"
+    compile ("org.grails.plugins:cache")
+	{
+		exclude group: 'org.apache.commons', module: 'commons-lang3'
+	}
     compile "org.grails.plugins:async"
     compile "org.grails.plugins:spring-security-rest:3.0.1"
     compile "org.grails.plugins:events"
@@ -110,7 +120,7 @@ dependencies {
 
 bootRun {
 	doFirst {
-		delete files("C:/BirchSoftwareCorp/home/council-search-home/logs/council-search-data.log")
+		delete files("C:/BirchSoftwareCorp/home/council-search-home/logs/council-search.log")
 	}
 	grails.pathingJar = true // Windows issue
 	ignoreExitValue true

@@ -58,12 +58,12 @@ class UrlMappings {
 		get "/api/guest/match/${state}/${template}/${count}" (controller:"match", action:"list")
 
 		// Monitor
-		get "/api/regions/$regionId/monitors" (controller:"monitor", action:"index")
-		get "/api/monitors/$id" (controller:"monitor", action:"show")
-		post "/api/monitors" (controller:"monitor", action:"save")
-//		get "/api/regions/$id/edit" (controller:"region", action:"error")
-		put "/api/monitors" (controller:"monitor", action:"update")
-//		delete "/api/regions/$id" (controller:"region", action:"error")
+		get "/api/guest/region/$regionId/monitor" (controller:"monitor", action:"list")
+		get "/api/guest/monitor/$id" (controller:"monitor", action:"show")
+		get "/api/guest/monitor/$id/process" (controller:"monitor", action:"process")
+		post "/api/guest/region/$regionId/monitor" (controller:"monitor", action:"save")
+		put "/api/guest/monitor" (controller:"monitor", action:"update")
+		delete "/api/guest/monitor/$id" (controller:"monitor", action:"delete")
 
 		// Region
 		get "/api/guest/state/$abbr/regions" (controller:"region", action:"list")

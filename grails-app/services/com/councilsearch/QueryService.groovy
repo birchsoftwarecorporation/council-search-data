@@ -2,9 +2,8 @@ package com.councilsearch
 
 import grails.gorm.transactions.NotTransactional
 import groovy.sql.Sql
-
+import java.sql.SQLException
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 class QueryService {
 	def dataSource
@@ -12,7 +11,7 @@ class QueryService {
 	static transactional = false
 
 	@NotTransactional
-	def monitorById(def monitorId) {
+	def monitorById(def monitorId) throws SQLException {
 		Sql sql = new Sql(dataSource)
 		List monitor = []
 		String query = """
@@ -23,11 +22,23 @@ class QueryService {
 				r.name regionName,
 				replace(r.class, "com.councilsearch.", "") regionType,
 				m.id monitorId,
-				m.extractor_id extractorId,
+				m.url,
 				m.hash_dedup hashDedup,
 				m.ssl_version sslVersion,
 				m.user_agent userAgent,
-				m.cookie
+				m.cookie,
+				m.urlsxpath urlsXPath,
+				m.rowxpath rowXPath,
+				m.titlexpath titleXPath,
+				m.title_regex titleRegex,
+				m.datexpath dateXPath,
+				m.date_regex dateRegex,
+				m.agendaxpath agendaXPath,
+				m.agenda_contentxpath agendaContentXPath,
+				m.agenda_supplementxpath agendaSupplementXPath,
+				m.minutexpath minuteXPath,
+				m.minute_contentxpath minuteContentXPath,
+				m.minute_supplementxpath minuteSupplementXPath
 			FROM
 				monitor m 
 				left join region r on r.id = m.region_id
@@ -38,8 +49,6 @@ class QueryService {
 
 		try{
 			monitor = sql.rows(query, [monitorId: monitorId])
-		}catch(Exception e){
-			log.error("Could not query for Monitor with Id: ${monitorId} - "+ e)
 		}finally{
 			sql.close()
 		}
@@ -48,7 +57,7 @@ class QueryService {
 	}
 
 	@NotTransactional
-    def monitorsByStatus(String status) {
+    def monitorsByStatus(String status) throws SQLException{
 		Sql sql = new Sql(dataSource)
 		List monitors = []
 		String query = """
@@ -59,11 +68,23 @@ class QueryService {
 				r.name regionName,
 				replace(r.class, "com.councilsearch.", "") regionType,
 				m.id monitorId,
-				m.extractor_id extractorId,
+				m.url,
 				m.hash_dedup hashDedup,
 				m.ssl_version sslVersion,
 				m.user_agent userAgent,
-				m.cookie
+				m.cookie,
+				m.urlsxpath urlsXPath,
+				m.rowxpath rowXPath,
+				m.titlexpath titleXPath,
+				m.title_regex titleRegex,
+				m.datexpath dateXPath,
+				m.date_regex dateRegex,
+				m.agendaxpath agendaXPath,
+				m.agenda_contentxpath agendaContentXPath,
+				m.agenda_supplementxpath agendaSupplementXPath,
+				m.minutexpath minuteXPath,
+				m.minute_contentxpath minuteContentXPath,
+				m.minute_supplementxpath minuteSupplementXPath
 			FROM
 				monitor m 
 				left join region r on r.id = m.region_id
@@ -74,8 +95,6 @@ class QueryService {
 
 		try{
 			monitors = sql.rows(query, [status: status])
-		}catch(Exception e){
-			log.error("Could not query for Live Monitors: "+ e)
 		}finally{
 			sql.close()
 		}
@@ -299,7 +318,7 @@ class QueryService {
 	}
 
 
-	def getDocumentURLsByMonitorId(def monitorId){
+	def getDocumentURLsByMonitorId(def monitorId) throws SQLException {
 		log.info("Getting urls for Monitor:${monitorId}")
 		Sql sql = new Sql(dataSource)
 		List urls = []
@@ -316,8 +335,6 @@ class QueryService {
 			sql.rows(query, [monitorId: monitorId]).each{
 				urls.push(it.get("url"))
 			}
-		} catch (Exception e) {
-			log.error("Could not query for Document URLs by Monitor Id: " + e)
 		} finally {
 			sql.close()
 		}

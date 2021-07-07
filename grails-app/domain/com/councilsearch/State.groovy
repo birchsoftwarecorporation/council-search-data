@@ -16,7 +16,7 @@ class State {
 		name(nullable: false, blank: false, unique: true)
 		abbr(nullable: false, blank: false, unique: true)
 		fipsCode(nullable: false, blank: false, unique: true)
-		population(nullable: false, blank: false, unique: false)
+		population(nullable: false, unique: false)
 		utc(nullable: false, blank: false, unique: false)
 	}
 

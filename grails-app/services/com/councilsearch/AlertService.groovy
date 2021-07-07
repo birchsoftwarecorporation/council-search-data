@@ -59,7 +59,7 @@ class AlertService {
 		}
 
 		return alert
-    }
+	}
 
 	// We dont delete we only hide it
 	def remove(def alertId){

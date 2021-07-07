@@ -15,7 +15,11 @@ class Region {
 		name(nullable: false, blank: false, unique: false)
 		fipsCode(nullable: true, blank: true, unique: false)
 		censusType(nullable: true, blank: true, unique: false)
-		population(nullable: true, blank: true, unique: false)
+		population(nullable: true)
 		quality(nullable: true, blank: true, unique: false)
+	}
+
+	static mapping = {
+		monitors cascade: 'all-delete-orphan'
 	}
 }

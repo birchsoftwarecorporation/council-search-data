@@ -1,18 +1,17 @@
 package com.councilsearch
 
+import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException
 import grails.converters.JSON
 
+import java.sql.SQLException
+
 class MonitorController {
-	def index() {
+
+	def monitorService
+
+	def list() {
 		def regionId = params.regionId
 		log.info("Showing Monitors for Region:${regionId}")
-
-		if(!regionId){
-			response.status = 400
-			log.error("Region Id not specified")
-			render ([error: "Region Id not specified"] as JSON)
-			return
-		}
 
 		Region region = Region.get(regionId)
 
@@ -30,16 +29,6 @@ class MonitorController {
 
 	def show() {
 		def id = params.id
-
-		log.info("Showing Monitor:${id}")
-
-		if(!id){
-			log.error("Monitor Id not specified")
-			response.status = 400
-			render ([error: "Monitor Id not specified"] as JSON)
-			return
-		}
-
 		Monitor monitor = Monitor.get(id)
 
 		if(!monitor){
@@ -53,49 +42,69 @@ class MonitorController {
 	}
 
 	def save(){
-		def monitorJSON = request.JSON
+		def regionId = params.regionId
+		def dataJSON = request.JSON
+
 		Monitor monitor
 
-		log.info("Saving Monitor...")
-
 		try{
-			// Example: { "url":"google.com", "status":"open", "extractorId":"dfsdflkjlk", "region":{"id":"1"}}
-			monitor = new Monitor(monitorJSON)
-
-			if(!monitor.save()){
-				response.status = 500
-				log.error "Unable to save monitor! Errors: " + monitor.errors
-				render ([error: "Unable to save monitor: "+ monitor.errors] as JSON)
-			}
+			monitor = monitorService.create(regionId, dataJSON)
 		}catch(Exception e){
 			response.status = 500
-			log.error "Unable to save monitor! Errors: " + monitor?.errors
-			render ([error: "Unable to save monitor!" + monitor?.errors] as JSON)
+			log.error "Unable to save monitor! Errors: " + e.message
+			render ([error: "Unable to save monitor!"] as JSON)
+			return
 		}
 
 		render monitor as JSON
 	}
 
-//	def update(Monitor monitor){
-////		def monitorJSON = request.JSON
-////		Monitor monitor
-//
-//		try{
-//			// Example: { "url":"google.com", "status":"open", "extractorId":"dfsdflkjlk", "region":{"id":"1"}}
-////			monitor = Monitor.get(monitorJSON)
-//
-//			if(!monitor.save()){
-//				response.status = 500
-//				println "Unable to update monitor! Errors: " + monitor.errors
-//				render ([error: "Unable to update monitor: "+ monitor.errors] as JSON)
-//			}
-//		}catch(Exception e){
-//			response.status = 500
-//			println "Unable to update monitor! Errors: " + monitor.errors
-//			render ([error: "Unable to update monitor!" + monitor.errors] as JSON)
-//		}
-//
-//		render monitor as JSON
-//	}
+	def update(){
+		def dataJSON = request.JSON
+		Monitor monitor
+
+		try{
+			monitor = monitorService.update(dataJSON)
+		}catch(Exception e){
+			response.status = 500
+			log.error "Unable to save monitor! Errors: " + e.message
+			render ([error: "Unable to save monitor!"] as JSON)
+			return
+		}
+
+		render monitor as JSON
+	}
+
+	def delete(){
+		def id = params.id
+
+		try{
+			monitorService.delete(id)
+		}catch(Exception e){
+			response.status = 500
+			log.error "Unable to delete monitor! Errors: " + e.message
+			render ([error: "Unable to delete monitor!"] as JSON)
+			return
+		}
+
+		render "Successfully deleted Monitor:${id}"
+	}
+
+	def process(){
+		def id = params.id
+		def dataMaps = []
+
+		try{
+			dataMaps = monitorService.process(id)
+		}catch(SQLException | IOException | FailingHttpStatusCodeException | MalformedURLException e){
+			response.status = 500
+			log.error "Unable to process Monitor:${id}. Errors: " + e.message
+			render ([error: "Unable to process Monitor:${id}"] as JSON)
+			return
+		}
+
+		render dataMaps as JSON
+	}
+
 
 }

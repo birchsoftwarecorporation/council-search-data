@@ -18,7 +18,6 @@ import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 
 class RequestService implements InitializingBean{
-	// TODO - Separate this to its own microservice
 	Integer REQUEST_TIME_OUT // Milli
 	String DEFAULT_SSL_VERSION
 	Integer MAX_REDIRECT

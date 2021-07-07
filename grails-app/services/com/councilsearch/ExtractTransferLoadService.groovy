@@ -1,15 +1,11 @@
 package com.councilsearch
 
-import com.councilsearch.importio.ImportioResponse
 import com.councilsearch.search.Request
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.MapperFeature
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException
 import grails.gsp.PageRenderer
 import org.apache.http.HttpEntity
 import org.apache.http.HttpResponse
 import org.apache.http.HttpStatus
-import org.apache.http.util.EntityUtils
 import com.google.common.hash.Hashing
 import org.apache.pdfbox.multipdf.Overlay
 import org.apache.pdfbox.tools.TextToPDF
@@ -26,6 +22,8 @@ import org.apache.tika.sax.BodyContentHandler
 import java.nio.charset.Charset
 import org.springframework.beans.factory.InitializingBean
 import org.jsoup.Jsoup
+
+import java.sql.SQLException
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -41,13 +39,11 @@ class ExtractTransferLoadService implements InitializingBean {
 	def eventService
 	def messageService
 	def amazonWebService
+	def monitorService
 
 	PageRenderer groovyPageRenderer
 
 	String PDF_OVERLAY_LOCATION
-	String IMPORTIO_BASE_URL
-	String IMPORTIO_PATH
-	String IMPORTIO_API_KEY
 	String TEMP_DIR
 	Integer ETL_REGION_THREAD
 	Integer ETL_DOCUMENT_BATCH_SIZE
@@ -55,9 +51,6 @@ class ExtractTransferLoadService implements InitializingBean {
 	// TODO - Separate this to its own microservice
 
 	public void afterPropertiesSet() throws Exception {
-		IMPORTIO_BASE_URL = CustomConfig.findByName("IMPORTIO_BASE_URL")?.getValue() ?: "https://data.import.io"
-		IMPORTIO_PATH = CustomConfig.findByName("IMPORTIO_PATH")?.getValue() ?: "/extractor/EXTRACTOR_ID/json/latest"
-		IMPORTIO_API_KEY = CustomConfig.findByName("IMPORTIO_API_KEY")?.getValue() ?: ""
 		TEMP_DIR = CustomConfig.findByName("TEMP_DIR")?.getValue() ?: ""
 		ETL_REGION_THREAD = CustomConfig.findByName("ETL_REGION_THREAD")?.getValue() as Integer ?: 2
 		ETL_DOCUMENT_BATCH_SIZE = CustomConfig.findByName("ETL_DOCUMENT_BATCH_SIZE")?.getValue() as Integer ?: 5
@@ -76,18 +69,17 @@ class ExtractTransferLoadService implements InitializingBean {
 			monitors = queryService.monitorsByStatus("Live")
 		}
 
+		Iterator<Map> mItr = monitors.iterator()
+
 		// Organize them by region to not crash their website...
 		Map docsByRegion = [:]
-
-		Iterator<Map> mItr = monitors.iterator()
 
 		// Grab the documents from the monitor and add them by region so we dont
 		// crush a single muni server
 		while(mItr.hasNext()){
 			Map monitor = mItr.next()
 			def regionId = monitor.regionId
-			List docPayloads = processMonitor(monitor)
-			sleep(500) // Importio server limit
+			List docPayloads = processMonitor(monitor) ?: []
 
 			// Add to docs list
 			if(docsByRegion.containsKey(regionId)){
@@ -116,7 +108,7 @@ class ExtractTransferLoadService implements InitializingBean {
 				// Take the list of documents and batch them to commit them
 				docPayloads.collate(ETL_DOCUMENT_BATCH_SIZE).each { docPayloadsBatch ->
 					count = count + ETL_DOCUMENT_BATCH_SIZE // Just for logging info
-					log.debug("Processing Region:${regionId} document batch:${count} of ${docPayloads?.size()}")
+					log.info("Processing Region:${regionId} document batch:${count} of ${docPayloads?.size()}")
 					requestDocuments(docPayloadsBatch)
 					extractDocuments(docPayloadsBatch)
 					generateHash(docPayloadsBatch)
@@ -137,224 +129,45 @@ class ExtractTransferLoadService implements InitializingBean {
 	}
 
 	def processMonitor(Map monitor){
+		log.info "Extracting data for Monitor:${monitor.monitorId}"
 		boolean textDedup = monitor.hashDedup ?: false
-		log.info "Gathering Monitor:${monitor.monitorId} data from import.io"
-		List docMaps = getImportData(monitor)
-
-		log.info "Monitor:${monitor.monitorId} found ${docMaps?.size()} documents"
-
-		// Dont dedup urls will dedup based on the text downstream
-		if(!textDedup){
-			docMaps = deduplicateDocumentByURL(monitor, docMaps)
-		}
-
-		log.info "Monitor:${monitor.monitorId} found ${docMaps?.size()} documents after deduplication"
-		log.info "End Gathering Monitor:${monitor.monitorId} data"
-
-		return docMaps
-	}
-
-	List<Map> getImportData(Map monitor){
-		log.info "Requesting Importio data"
-		List<Map> docMaps = []
-
-		ImportioResponse ir = requestImportio(monitor)
-		docMaps = getDocumentMapList(ir, monitor)
-
-		return docMaps
-	}
-
-	ImportioResponse requestImportio(def monitor){
-		ImportioResponse ir
-		// Build the Importio URL
-		String url = "${IMPORTIO_BASE_URL}${IMPORTIO_PATH?.replace("EXTRACTOR_ID", monitor.extractorId)}?_apikey=${IMPORTIO_API_KEY}"
-		// Request the data from the import.io server
-		HttpResponse response = requestService.executeSSLGet(url, null, null, 0)
-
-		// Something didnt go right
-		if(response == null || response.getStatusLine().getStatusCode() != HttpStatus.SC_OK){
-			return ir
-		}
-
-		// Get response from the server
-		String importResponseStr = EntityUtils.toString(response.getEntity())
-
-		// Automap it to the Importio Response object ignoring values we dont need
-		ObjectMapper om = new ObjectMapper()
-		om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-		om.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
-
-		ir = om.readValue(importResponseStr, ImportioResponse.class)
-
-		return ir
-	}
-
-	List<Map> getDocumentMapList(ImportioResponse ir, def monitor){
 		List docMaps = []
-		List datas = ir?.result?.extractorData?.datas
 
-		// Iterate through the raw import results
-		datas?.each { data ->
-			data?.groups?.each { group ->
-				String title = group.titles?.collect{ it.text }?.join(" ")
-				String dateStr = group.dates?.collect{ it.text }?.join(" ")
-				String aContent = group.agenda_contents?.collect{ it.text }?.join("\n")
-				String mContent = group.agenda_contents?.collect{ it.text }?.join("\n")
+		try{
+			docMaps = monitorService.process(monitor) ?: []
 
-				// Processing documents
+			log.info "Monitor:${monitor.monitorId} found ${docMaps?.size()} documents"
 
-				// Agendas
-				// If we have content dont process links
-				if(aContent != null && !"".equals(aContent)){
-					Map docMap = [:]
-					docMap.put("stateName", monitor.stateName)
-					docMap.put("regionId", monitor.regionId)
-					docMap.put("regionName", monitor.regionName)
-					docMap.put("title", title)
-					docMap.put("dateStr", dateStr)
-					docMap.put("content", aContent)
-					docMap.put("monitorId", monitor.monitorId)
-					docMap.put("sslVersion", monitor.sslVersion)
-					docMap.put("userAgent", monitor.userAgent)
-					docMap.put("cookie", monitor.cookie)
-					docMap.put("documentType", "com.councilsearch.Agenda")
-					docMaps.add(docMap)
-				}else{ // No content grab the links for processing
-					group.agendas.each { agenda ->
-						Map docMap = [:]
-						docMap.put("stateName", monitor.stateName)
-						docMap.put("regionId", monitor.regionId)
-						docMap.put("regionName", monitor.regionName)
-						docMap.put("title", title)
-						docMap.put("dateStr", dateStr)
-						docMap.put("monitorId", monitor.monitorId)
-						docMap.put("sslVersion", monitor.sslVersion)
-						docMap.put("userAgent", monitor.userAgent)
-						docMap.put("cookie", monitor.cookie)
-						docMap.put("documentType", "com.councilsearch.Agenda")
-
-						def url = findImportioUrl(agenda.href, agenda.text)
-
-						if(url != null && !"".equals(url)){
-							log.debug("Adding url agenda: "+url)
-							docMap.put("url", url)
-							docMaps.add(docMap)
-						}
-					}
-				}
-
-				// Agendas supplemental info
-				// No content for supps grab the links for processing
-				group.agenda_sups.each { agendaSup ->
-					Map docMap = [:]
-					docMap.put("stateName", monitor.stateName)
-					docMap.put("regionId", monitor.regionId)
-					docMap.put("regionName", monitor.regionName)
-					docMap.put("title", title)
-					docMap.put("dateStr", dateStr)
-					docMap.put("monitorId", monitor.monitorId)
-					docMap.put("sslVersion", monitor.sslVersion)
-					docMap.put("userAgent", monitor.userAgent)
-					docMap.put("cookie", monitor.cookie)
-					docMap.put("documentType", "com.councilsearch.AgendaSupplement")
-
-					def url = findImportioUrl(agendaSup.href, agendaSup.text)
-
-					if(url != null && !"".equals(url)){
-						log.debug("Adding url agenda sup: "+url)
-						docMap.put("url", url)
-						docMaps.add(docMap)
-					}
-				}
-
-				// Minutes
-				// If we have content dont process links
-				if(mContent != null && !"".equals(mContent)){
-					Map docMap = [:]
-					docMap.put("stateName", monitor.stateName)
-					docMap.put("regionId", monitor.regionId)
-					docMap.put("regionName", monitor.regionName)
-					docMap.put("title", title)
-					docMap.put("dateStr", dateStr)
-					docMap.put("monitorId", monitor.monitorId)
-					docMap.put("sslVersion", monitor.sslVersion)
-					docMap.put("userAgent", monitor.userAgent)
-					docMap.put("cookie", monitor.cookie)
-					docMap.put("content", mContent)
-					docMap.put("documentType", "com.councilsearch.Minute")
-				}else{ // No content grab the links for processing
-					group.minutes.each { minute ->
-						Map docMap = [:]
-						docMap.put("stateName", monitor.stateName)
-						docMap.put("regionId", monitor.regionId)
-						docMap.put("regionName", monitor.regionName)
-						docMap.put("title", title)
-						docMap.put("dateStr", dateStr)
-						docMap.put("monitorId", monitor.monitorId)
-						docMap.put("sslVersion", monitor.sslVersion)
-						docMap.put("userAgent", monitor.userAgent)
-						docMap.put("cookie", monitor.cookie)
-						docMap.put("documentType", "com.councilsearch.Minute")
-
-						def url = findImportioUrl(minute.href, minute.text)
-
-						if(url != null && !"".equals(url)){
-							log.debug("Adding url minute: "+url)
-							docMap.put("url", url)
-							docMaps.add(docMap)
-						}
-					}
-				}
-
-				// Minutes Supplemental
-				// No content for supps grab the links for processing
-				group.minute_sups.each { minuteSup ->
-					Map docMap = [:]
-					docMap.put("title", title)
-					docMap.put("dateStr", dateStr)
-					docMap.put("monitorId", monitor.monitorId)
-					docMap.put("sslVersion", monitor.sslVersion)
-					docMap.put("userAgent", monitor.userAgent)
-					docMap.put("cookie", monitor.cookie)
-					docMap.put("documentType", "com.councilsearch.MinuteSupplement")
-
-					def url = findImportioUrl(minuteSup.href, minuteSup.text)
-
-					if(url != null && !"".equals(url)){
-						log.debug("Adding url minute sup: "+url)
-						docMap.put("url", url)
-						docMaps.add(docMap)
-					}
-				}
-
+			// Dont dedup urls will dedup based on the text downstream
+			if(!textDedup && docMaps.size() > 0){
+				docMaps = deduplicateDocumentByURL(monitor, docMaps)
 			}
+
+			log.info "End Gathering Monitor:${monitor.monitorId} data"
+		}catch(SQLException se){
+			log.error("Could not query for duplicate urls: " + se)
+		}catch(IOException ioe){
+			log.error("Could not process monitor: "+ioe)
+		}catch(FailingHttpStatusCodeException fhsce){
+			log.error("Could not process monitor: "+fhsce)
+		}catch(MalformedURLException mue){
+			log.error("Could not process Monitor: ${monitor.monitorId} with URL: ${monitor.url} "+mue)
 		}
 
 		return docMaps
 	}
 
-	def findImportioUrl(String href, String text){
-		String url
-
-		// Grab the link
-		if(href != null && !"".equals(href)){
-			url = href
-		}else if(text != null && text?.startsWith("http")){
-			url = text
-		}
-
-		return url
-	}
-
-	List<Map> deduplicateDocumentByURL(Map monitor, List<Map> docMaps){
+	List<Map> deduplicateDocumentByURL(Map monitor, List<Map> docMaps) throws SQLException{
 		def monitorId = monitor.get("monitorId")
-		log.info("Deduplicating Monitor:${monitorId} document URLs initial count: "+docMaps.size())
+		log.info("URL Deduplicating Monitor:${monitorId} with initial document count:  ${docMaps.size()}")
+
 		List existingUrls = queryService.getDocumentURLsByMonitorId(monitorId)
-		// Step 1 - Dedup urls from Importio
+
+		// Step 1 - Dedup urls
 		docMaps.unique{ docMap ->
 			docMap.url
 		}
-		log.info("Monitor:${monitorId} now has ${docMaps.size()} documents after Step 1 url dedup")
+
 		// Step 2 - Dedup urls that already exist
 		Iterator<Map> dItr = docMaps.iterator()
 
@@ -366,8 +179,9 @@ class ExtractTransferLoadService implements InitializingBean {
 				dItr.remove()
 			}
 		}
-		log.info("Monitor:${monitorId} now has ${docMaps.size()} documents after Step 2 url dedup")
-		log.info("Finished deduplicating Monitor:${monitorId} document URLs new count: "+docMaps.size())
+
+		log.info("Finished URL Deduplicating Monitor:${monitorId} with final document count:  ${docMaps.size()}")
+
 		return docMaps
 	}
 
@@ -642,7 +456,7 @@ class ExtractTransferLoadService implements InitializingBean {
 								.replaceAll("_", " ")
 								.replaceAll("\\.", " ")
 								.replaceAll("\\|", " ")
-								.replaceAll("\\s+", " ")
+								.replaceAll("\\s{2,}", " ")
 								.trim()
 
 			switch(dateStr) {
