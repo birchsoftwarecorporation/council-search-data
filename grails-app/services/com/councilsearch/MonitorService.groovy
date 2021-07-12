@@ -138,6 +138,9 @@ class MonitorService {
 	def process(Map monitorMap) throws IOException, FailingHttpStatusCodeException, MalformedURLException{
 		log.info("Processing Monitor:${monitorMap.monitorId}")
 		Instant start = Instant.now()
+
+		// TODO - Validate Monitor Xpath
+
 		log.info("Extracting website: ${monitorMap?.url}")
 		List<Map> docMaps = []
 		WebClient client = WebClientHelper.buildClient()
@@ -148,7 +151,7 @@ class MonitorService {
 			client.waitForBackgroundJavaScriptStartingBefore(60000)
 			log.info("Loaded website: ${monitorMap?.url}")
 
-			List rows = page.getByXPath(monitorMap?.rowXPath)?.take(25)
+			List rows = page.getByXPath(monitorMap?.rowXPath)
 			Iterator rowItr = rows.iterator()
 			int i = 1
 
@@ -176,26 +179,36 @@ class MonitorService {
 				// Extract Agenda URL
 				if(monitorMap?.agendaXPath != null && !"".equals(monitorMap?.agendaXPath)){
 					// 1 - Link
-					HtmlAnchor anchor = row.getFirstByXPath(monitorMap?.agendaXPath)
+					def anchor = row.getFirstByXPath(monitorMap?.agendaXPath)
 
-					// FYI - works well but experiment HTMLUnit API
-					// if there is a url, calc the full
-					if(anchor?.getHrefAttribute() != null && !"".equals(anchor.getHrefAttribute()?.trim())){
-						agendaURL = anchor?.getTargetUrl(anchor?.getHrefAttribute(), page)
-						// TODO 2 - Weird script regex
+					if("com.gargoylesoftware.htmlunit.html.HtmlAnchor".equals(anchor.getClass().getName())){
+						// FYI - works well but experiment HTMLUnit API
+						// if there is a url, calc the full
+						if(anchor?.getHrefAttribute() != null && !"".equals(anchor.getHrefAttribute()?.trim())){
+							agendaURL = anchor?.getTargetUrl(anchor?.getHrefAttribute(), page)
+							// TODO 2 - Weird script regex
+						}
+					}else{
+						log.info("Row: ${i} expected agendaXpath to product Anchor Element but got: "+anchor.getClass().getName())
+						continue
 					}
 				}
 
 				// Process Minute
 				if(monitorMap?.minuteXPath != null && !"".equals(monitorMap?.minuteXPath)){
 					// 1 - Link
-					HtmlAnchor anchor = row.getFirstByXPath(monitorMap?.minuteXPath)
+					def anchor = row.getFirstByXPath(monitorMap?.minuteXPath)
 
-					// FYI - works well but experiment HTMLUnit API
-					// if there is a url, calc the full
-					if(anchor?.getHrefAttribute() != null && !"".equals(anchor.getHrefAttribute()?.trim())){
-						minutesURL = anchor?.getTargetUrl(anchor?.getHrefAttribute(), page)
-						// TODO 2 - Weird script regex
+					if("com.gargoylesoftware.htmlunit.html.HtmlAnchor".equals(anchor.getClass().getName())){
+						// FYI - works well but experiment HTMLUnit API
+						// if there is a url, calc the full
+						if(anchor?.getHrefAttribute() != null && !"".equals(anchor.getHrefAttribute()?.trim())){
+							minutesURL = anchor?.getTargetUrl(anchor?.getHrefAttribute(), page)
+							// TODO 2 - Weird script regex
+						}
+					}else{
+						log.info("Row: ${i} expected minuteXPath to product Anchor Element but got: "+anchor.getClass().getName())
+						continue
 					}
 				}
 

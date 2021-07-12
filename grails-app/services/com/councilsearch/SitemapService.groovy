@@ -11,6 +11,7 @@ import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 
 class SitemapService implements InitializingBean {
 	def queryService
@@ -20,7 +21,6 @@ class SitemapService implements InitializingBean {
 	String SITEMAP_BASE_URL
 	DateTimeFormatter MYSQL_DATE_FORMAT
 	DateTimeFormatter SITEMAP_DATE_FORMAT
-
 
 	public void afterPropertiesSet() throws Exception {
 		SITEMAP_DIR = CustomConfig.findByName("SITEMAP_DIR")?.getValue() ?: "/data/sitemaps"
@@ -92,7 +92,7 @@ class SitemapService implements InitializingBean {
 
 		// Build the static page references
 		for(def staticPageName : staticPages){
-			log.debug("Processing entry: "+staticPageName)
+			log.info("Processing entry: "+staticPageName)
 			String url = SITEMAP_BASE_URL
 
 			try{
@@ -128,10 +128,6 @@ class SitemapService implements InitializingBean {
 		int urlCnt = 0
 		String fileNamePrefix = "sitemap-${monitorId}"
 		String sitemapFileName = fileNamePrefix+".xml.gz"
-//		Date today = Calendar.getInstance().getTime()
-//		DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd")
-//		String todayStr = dateFormat.format(today)
-
 		log.info("Creating for Monitor:${monitorId} with ${sMapInfo.size()} items")
 
 		// Assumption - never going to have 50,000 documents to one monitor
@@ -151,31 +147,26 @@ class SitemapService implements InitializingBean {
 				continue
 			}
 
-			try{
-				log.debug("Processing entry: "+sMap)
-				def state = sMap[0]
-				def region = sMap[1]
-				String dateCreatedStr = sMap[2] // being lazy
-				String meetingDateStr = sMap[3]
-				def docType = sMap[4]
-				def uuid = sMap[5]
+			def state = sMap[0]
+			def region = sMap[1]
+			String dateCreatedStr = sMap[2]
+			String meetingDateStr = sMap[3]
+			def docType = sMap[4]
+			def uuid = sMap[5]
 
-				// Create the dates
-				LocalDate dateCreated = LocalDate.parse(dateCreatedStr, MYSQL_DATE_FORMAT)
+			// Create the dates
+			LocalDate dateCreated = LocalDate.parse(dateCreatedStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
-				String url = "${SITEMAP_BASE_URL}/document/${uuid}"
+			String url = "${SITEMAP_BASE_URL}/document/${uuid}"
 
-				// Create the entry
-				WebSitemapUrl wsu = new WebSitemapUrl.Options(url)
-						.lastMod(dateCreated.format(SITEMAP_DATE_FORMAT))
-						.priority(0.6) // default
-						.changeFreq(ChangeFreq.MONTHLY)
-						.build()
-				wsg.addUrl(wsu)
-				urlCnt++
-			}catch(Exception e){
-				log.error("Could not create sitemap entry for Monitor:${monitorId} "+e)
-			}
+			// Create the entry
+			WebSitemapUrl wsu = new WebSitemapUrl.Options(url)
+					.lastMod(dateCreated.format(SITEMAP_DATE_FORMAT))
+					.priority(0.6) // default
+					.changeFreq(ChangeFreq.MONTHLY)
+					.build()
+			wsg.addUrl(wsu)
+			urlCnt++
 		}
 
 		// Occasionally no urls are added and an error is thrown by the Sitemap lib
