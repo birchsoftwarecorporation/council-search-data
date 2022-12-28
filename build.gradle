@@ -65,7 +65,7 @@ dependencies {
 	runtime 'mysql:mysql-connector-java:8.0.23'
 	// Spring Security
 	compile 'org.grails.plugins:spring-security-core:4.0.3'
-	compile "org.grails.plugins:spring-security-rest:3.0.0.RC1"
+	compile "org.grails.plugins:spring-security-rest:3.0.1"
 	// Grails Async
 //	compile group: 'org.grails.plugins', name: 'async', version: '4.0.0'
 //	compile "org.grails:grails-datastore-gorm-async"

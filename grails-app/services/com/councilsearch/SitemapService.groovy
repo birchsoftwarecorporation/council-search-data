@@ -7,11 +7,8 @@ import com.redfin.sitemapgenerator.WebSitemapUrl
 import groovy.sql.Sql
 import org.springframework.beans.factory.InitializingBean
 import org.apache.commons.io.FileUtils
-import java.text.DateFormat
-import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 
 class SitemapService implements InitializingBean {
 	def queryService

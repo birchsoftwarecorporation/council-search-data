@@ -1,7 +1,5 @@
 package com.councilsearch
 
-
-import grails.rest.*
 import grails.converters.*
 
 class EventController {

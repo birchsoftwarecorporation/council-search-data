@@ -953,6 +953,4 @@ class ExtractTransferLoadService implements InitializingBean {
 			}
 		}
 	}
-
-
 }
